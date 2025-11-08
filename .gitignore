@@ -1,0 +1,69 @@
+# Gradle
+.gradle/
+build/
+*/build/
+!gradle-wrapper.jar
+
+# Local configuration file (sdk path, etc)
+local.properties
+
+# Log files
+*.log
+
+# Android Studio
+.idea/
+*.iml
+*.hprof
+
+# Keystore files
+*.jks
+*.keystore
+
+# External native build folder generated in Android Studio 2.2+
+.externalNativeBuild
+
+# Google Services (e.g. APIs or Firebase config)
+google-services.json
+*.pem
+
+# Proguard folder
+/proguard/
+
+# IntelliJ
+*.iws
+*.ipr
+
+# Miscellaneous
+.DS_Store
+*.class
+*.jar
+*.war
+*.ear
+*.apk
+*.ap_
+*.dex
+*.class
+*.so
+*.swp
+*.lock
+*.orig
+
+# Crashlytics
+crashlytics-build.properties
+
+# Generated files
+captures/
+outputs/
+.navigation/
+
+# Kotlin
+*.kotlin_module
+
+# Jetpack Compose previews
+*.png
+
+# NDK
+obj/
+
+# Exclude Gradle wrapper jar if already tracked
+!gradle/wrapper/gradle-wrapper.jar
