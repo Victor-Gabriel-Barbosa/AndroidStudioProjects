@@ -56,9 +56,6 @@ Use as Issues do GitHub. Ao abrir uma issue, inclua:
 - Logs ou prints de erro
 - Versão do Android Studio / JDK
 
-Licença
-Ainda não há uma licença padrão adicionada a este repositório. Se pretende reutilizar o código, adicione uma licença (por exemplo MIT, Apache-2.0) ou me avise para eu incluir uma.
-
 Contato
 Perfil: https://github.com/Victor-Gabriel-Barbosa  
 Se quiser conversar sobre algum projeto ou pedir ajuda, abra uma issue ou mande mensagem pelo GitHub.
