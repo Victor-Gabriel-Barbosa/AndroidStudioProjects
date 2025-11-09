@@ -1,5 +1,6 @@
 package com.example.videocompose
 
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -9,16 +10,28 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.example.videocompose.ui.theme.VideoComposeTheme
+
+class VideoViewModel : ViewModel() {
+    var exoPlayer: ExoPlayer? = null
+
+    override fun onCleared() {
+        super.onCleared()
+        exoPlayer?.release()
+        exoPlayer = null
+    }
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -30,10 +43,11 @@ class MainActivity : ComponentActivity() {
                     Box(
                         modifier = Modifier
                             .padding(innerPadding)
-                            .fillMaxSize()
+                            .fillMaxSize(),
+                        contentAlignment = Alignment.Center
                     ) {
                         Video(
-                            videoUri = "https://www.w3schools.com/html/mov_bbb.mp4"
+                            videoUri = "https://www.w3schools.com/html/mov_bbb.mp4".toUri()
                         )
                     }
                 }
@@ -43,33 +57,26 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun Video(videoUri: String, modifier: Modifier = Modifier) {
+fun Video(videoUri: Uri, modifier: Modifier = Modifier, viewModel: VideoViewModel = viewModel()) {
     val context = LocalContext.current
+
     val exoPlayer = remember {
-        ExoPlayer.Builder(context).build().apply {
-            val mediaItem = MediaItem.fromUri(videoUri.toUri())
+        viewModel.exoPlayer ?: ExoPlayer.Builder(context).build().apply {
+            val mediaItem = MediaItem.fromUri(videoUri)
             setMediaItem(mediaItem)
             prepare()
             playWhenReady = true
+            viewModel.exoPlayer = this
         }
     }
 
     AndroidView(
-        factory = { context ->
-            VideoView(context).apply {
-                setVideoURI(videoUri)
-                setOnPreparedListener { mp ->
-                    mp.isLooping = true
-                    start()
-                }
+        factory = {
+            PlayerView(it).apply {
+                player = exoPlayer
+                useController = true
             }
         },
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
+        modifier = modifier.fillMaxSize()
     )
-
-    DisposableEffect(Unit) {
-        onDispose { exoPlayer.release() }
-    }
 }
