@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -51,17 +52,21 @@ fun Video(videoUri: String, modifier: Modifier = Modifier) {
             prepare()
             playWhenReady = true
         }
-
     }
 
     AndroidView(
-        factory = {
-            PlayerView(it).apply {
-                player = exoPlayer
-                useController = true  // mostra controles (play, pause, etc.)
+        factory = { context ->
+            VideoView(context).apply {
+                setVideoURI(videoUri)
+                setOnPreparedListener { mp ->
+                    mp.isLooping = true
+                    start()
+                }
             }
         },
-        modifier = modifier
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
     )
 
     DisposableEffect(Unit) {
