@@ -5,25 +5,41 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.rememberBottomSheetScaffoldState
+import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.example.testes.ui.theme.TestesTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -57,6 +73,7 @@ fun MeuCompA(modifier: Modifier = Modifier) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         MeuCompB(nome = nome, onNomeChange = { nome = it })
+        MapaComTresEstados()
     }
 }
 
@@ -97,4 +114,76 @@ fun MeuCompC(nomeCorreto: Boolean) {
         text = if (nomeCorreto) "Nome Correto!" else "Nome incorreto",
         color = if (nomeCorreto) Color.Green else Color.Red
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MapaComTresEstados() {
+    val scope = rememberCoroutineScope()
+
+    // 1. Configura o estado para permitir que ela suma (Hidden)
+    val scaffoldState = rememberBottomSheetScaffoldState(
+        bottomSheetState = rememberStandardBottomSheetState(
+            skipHiddenState = false,
+            initialValue = SheetValue.PartiallyExpanded // Começa minimizada
+        )
+    )
+
+    BottomSheetScaffold(
+        scaffoldState = scaffoldState,
+        // 2. Define a altura da "Barra Minimizada".
+        // A sheet vai travar aqui antes de fechar totalmente.
+        sheetPeekHeight = 100.dp,
+
+        // Dica visual: Adicione uma sombra/elevação para separar do mapa
+        sheetShadowElevation = 12.dp,
+        sheetContent = {
+            // Conteúdo da Sheet
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Um "Handle" (barrinha cinza) ajuda o usuário a entender que pode arrastar
+                Box(
+                    modifier = Modifier
+                        .width(50.dp)
+                        .height(4.dp)
+                        .background(Color.Gray, shape = RoundedCornerShape(2.dp))
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Item Selecionado: Chaves de Casa", style = MaterialTheme.typography.titleMedium)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Detalhes extras aparecem ao expandir...")
+                // Adicione altura aqui para simular conteúdo longo
+                Spacer(modifier = Modifier.height(200.dp))
+            }
+        }
+    ) { paddingValues ->
+        // Conteúdo de fundo (Mapa)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("Mapa aqui")
+
+            // Botão para reabrir caso o usuário feche tudo
+            if (scaffoldState.bottomSheetState.currentValue == SheetValue.Hidden) {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            // Traz de volta para o estado minimizado
+                            scaffoldState.bottomSheetState.partialExpand()
+                        }
+                    },
+                    modifier = Modifier.padding(bottom = 20.dp)
+                ) {
+                    Text("Reabrir Sheet")
+                }
+            }
+        }
+    }
 }

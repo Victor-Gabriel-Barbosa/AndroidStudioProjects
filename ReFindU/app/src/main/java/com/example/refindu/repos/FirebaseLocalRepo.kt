@@ -3,13 +3,13 @@ package com.example.refindu.repos
 import android.net.Uri
 import com.example.refindu.models.Local
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
 
@@ -24,16 +24,7 @@ class FirebaseLocalRepo(
     override suspend fun save(local: Local): Result<Boolean> {
         return try {
             val uid = auth.currentUser?.uid ?: throw Exception("Usuário não logado")
-            var downloadUrl: String? = null
-
-            // Upload da imagem para o Storage
-            if (local.imageUri != null) {
-                val filename = "${uid}/${UUID.randomUUID()}.jpg"
-                val ref = storage.reference.child("local_images/$filename")
-
-                ref.putFile(local.imageUri).await()
-                downloadUrl = ref.downloadUrl.await().toString()
-            }
+            val downloadUrl = if (local.imgUri != null) uploadImg(uid, local.imgUri) else null
 
             // Mapeamento e persistência no Firestore
             val localData = hashMapOf(
@@ -43,7 +34,7 @@ class FirebaseLocalRepo(
                 "radius" to local.radius,
                 "name" to local.name,
                 "category" to local.category,
-                "imageUrl" to downloadUrl,
+                "imgUrl" to downloadUrl,
                 "createAt" to FieldValue.serverTimestamp()
             )
 
@@ -62,21 +53,23 @@ class FirebaseLocalRepo(
                     close(error)
                     return@addSnapshotListener
                 }
-                if (snapshot != null) {
-                    val lista = snapshot.documents.mapNotNull { doc ->
-                        Local(
-                            id = doc.id,
-                            uid = doc.getString("uid") ?: "",
-                            latitude = doc.getDouble("latitude") ?: 0.0,
-                            longitude = doc.getDouble("longitude") ?: 0.0,
-                            radius = doc.getDouble("radius") ?: 0.0,
-                            name = doc.getString("name") ?: "",
-                            category = doc.getString("category") ?: "",
-                            imageUrl = doc.getString("imageUrl")
-                        )
-                    }
-                    trySend(lista)
+
+                snapshot?.let { trySend(it.documents.map { doc -> doc.toLocal() }) }
+            }
+        awaitClose { listener.remove() }
+    }
+
+    // Retorna um Flow observável que emite atualizações em tempo real da coleção 'saved_locals' filtrada por 'uid'
+    override fun findByUid(uid: String): Flow<List<Local>> = callbackFlow {
+        val listener = db.collection("saved_locals")
+            .whereEqualTo("uid", uid)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
                 }
+
+                snapshot?.let { trySend(it.documents.map { doc -> doc.toLocal() }) }
             }
         awaitClose { listener.remove() }
     }
@@ -84,19 +77,19 @@ class FirebaseLocalRepo(
     // Atualiza dados de um local existente e gerencia a substituição da imagem no Storage
     override suspend fun updateById(localId: String, local: Local): Result<Boolean> {
         return try {
-            // Remove imagem antiga antes da atualização
-            deleteImage(localId)
+            // Remove imagem antiga e faz upload da nova se existir
+            val newImageUrl = if (local.imgUri != null) {
+                deleteImg(localId)
+                uploadImg(local.uid, local.imgUri)
+            } else local.imgUrl
 
-            // Define nova URL: Upload de nova imagem ou mantém a URL existente (se não houver nova Uri)
-            val newImageUrl = if (local.imageUri != null) uploadImage(local.uid, local.imageUri) else local.imageUrl
-
-            val updatedLocal = local.copy(imageUrl = newImageUrl)
+            val updatedLocal = local.copy(imgUrl = newImageUrl)
 
             val updateMap = mapOf(
                 "name" to updatedLocal.name,
                 "category" to updatedLocal.category,
                 "radius" to updatedLocal.radius,
-                "imageUrl" to updatedLocal.imageUrl
+                "imgUrl" to updatedLocal.imgUrl
             )
 
             db.collection("saved_locals").document(localId).update(updateMap).await()
@@ -109,30 +102,44 @@ class FirebaseLocalRepo(
     // Remove o documento do Firestore e a imagem associada no Storage
     override suspend fun deleteById(localId: String): Result<Boolean> {
         return try {
-            deleteImage(localId)
             db.collection("saved_locals").document(localId).delete().await()
+            deleteImg(localId)
             Result.success(true)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    // Helper: Realiza upload para 'local_images/{uid}/{uuid}' e retorna URL de download
-    private suspend fun uploadImage(uid: String, uri: Uri): String {
+    // Função de extensão para centralizar o mapeamento
+    private fun DocumentSnapshot.toLocal(): Local {
+        return Local(
+            id = this.id,
+            uid = this.getString("uid") ?: "",
+            latitude = this.getDouble("latitude") ?: 0.0,
+            longitude = this.getDouble("longitude") ?: 0.0,
+            radius = this.getDouble("radius") ?: 0.0,
+            name = this.getString("name") ?: "",
+            category = this.getString("category") ?: "",
+            imgUrl = this.getString("imgUrl")
+        )
+    }
+
+    // Realiza upload para 'local_imgs/{uid}/{uuid}' e retorna URL de download
+    private suspend fun uploadImg(uid: String, uri: Uri): String {
         val filename = "${uid}/${UUID.randomUUID()}.jpg"
-        val ref = storage.reference.child("local_images/$filename")
+        val ref = storage.reference.child("local_imgs/$filename")
         ref.putFile(uri).await()
         return ref.downloadUrl.await().toString()
     }
 
-    // Helper: Recupera a URL da imagem no Firestore e remove o arquivo do Storage
-    private suspend fun deleteImage(localId: String) {
+    // Recupera a URL da imagem no Firestore e remove o arquivo do Storage
+    private suspend fun deleteImg(localId: String) {
         val snapshot = db.collection("saved_locals").document(localId).get().await()
-        val imageUrl = snapshot.getString("imageUrl")
+        val imgUrl = snapshot.getString("imgUrl")
 
-        if (!imageUrl.isNullOrEmpty()) {
+        if (!imgUrl.isNullOrEmpty()) {
             try {
-                storage.getReferenceFromUrl(imageUrl).delete().await()
+                storage.getReferenceFromUrl(imgUrl).delete().await()
             } catch (e: Exception) {
                 e.printStackTrace()
             }

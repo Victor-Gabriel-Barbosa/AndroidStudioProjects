@@ -51,4 +51,16 @@
     <string name="editar">Editar</string>
     <string name="local_atualizado">Local atualizado!</string>
     <string name="editar_novo_local">Editar Novo Local</string>
+    <string name="editar_local">Editar Local</string>
+    <string name="voce_ainda_nao_cadastrou_nenhum_item">Você ainda não cadastrou nenhum item</string>
+    <string name="o_que_perdi">O que perdi?</string>
+    <string name="voce_nao_tem_nada_perdido">Você não tem nada perdido</string>
+    <string name="mensagens">Mensagens</string>
+    <string name="suas_mensagens">Suas Mensagens</string>
+    <string name="usuario_visitante">Usuário Visitante</string>
+    <string name="excluir_local">Excluir Local</string>
+    <string name="tem_certeza_que_deseja_excluir_essa_acao_nao_pode_ser_desfeita">Tem certeza que deseja excluir \'%1$s\'? Essa ação não pode ser desfeita.</string>
+    <string name="sim_excluir">Sim, excluir</string>
+    <string name="conversar">Conversar</string>
+    <string name="voce_ainda_nao_tem_conversas">Você ainda não tem conversas</string>
 </resources>

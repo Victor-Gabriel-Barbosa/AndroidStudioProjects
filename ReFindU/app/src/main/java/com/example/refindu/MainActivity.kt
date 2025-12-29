@@ -1,7 +1,6 @@
 package com.example.refindu
 
 import android.os.Bundle
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -12,18 +11,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,8 +34,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import com.example.refindu.ui.screens.FavoritesScreen
+import com.example.refindu.ui.components.LoadingScreen
+import com.example.refindu.ui.screens.ChatListScreen
+import com.example.refindu.ui.screens.ChatScreen
 import com.example.refindu.ui.screens.HomeScreen
 import com.example.refindu.ui.screens.ProfileScreen
 import com.example.refindu.ui.screens.SavedScreen
@@ -47,8 +47,6 @@ import com.example.refindu.ui.screens.login.SignupScreen
 import com.example.refindu.ui.theme.ReFindUTheme
 import com.example.refindu.viewmodels.AuthViewModel
 import com.example.refindu.viewmodels.LoginState
-import com.google.firebase.Firebase
-import com.google.firebase.auth.auth
 import org.koin.androidx.compose.koinViewModel
 
 class MainActivity : ComponentActivity() {
@@ -62,28 +60,36 @@ class MainActivity : ComponentActivity() {
                 val authViewModel: AuthViewModel = koinViewModel()
 
                 // Observa o estado do login
-                val loginState by authViewModel.loginState.collectAsState()
+                val loginState by authViewModel.loginState.collectAsStateWithLifecycle()
 
-                // Estado local simples para controlar a navegação inicial
-                var isUserLoggedIn by remember { mutableStateOf(authViewModel.isUserSignedIn) }
+                // Verifica se o usuário está logado
+                val isUserSignedIn by authViewModel.isUserSignedIn.collectAsStateWithLifecycle()
 
-                // Se o estado mudar para Success, atualiza a UI
-                LaunchedEffect(loginState) {
-                    if (loginState is LoginState.Success) isUserLoggedIn = true
-                }
+                when (isUserSignedIn) {
+                    null -> {
+                        // Estado 1: Carregamento
+                        LoadingScreen()
+                    }
+                    true -> {
+                        // Estado 2: Usuário logado
+                        val user by authViewModel.currentUserState.collectAsStateWithLifecycle(initialValue = null)
 
-                if (isUserLoggedIn) {
-                    ReFindUApp(
-                        onLogout = {
-                            authViewModel.logout()
-                            isUserLoggedIn = false
-                        }
-                    )
-                } else {
-                    AuthFlow(
-                        authViewModel = authViewModel, // Passa o ViewModel
-                        state = loginState
-                    )
+                        val userName = user?.displayName ?: user?.email ?: stringResource(R.string.usuario)
+                        val userPhoto = user?.photoUrl
+
+                        ReFindUApp(
+                            userName = userName,
+                            userPhoto = userPhoto,
+                            onLogout = { authViewModel.logout() }
+                        )
+                    }
+                    false -> {
+                        // Estado 3: Usuário deslogado
+                        AuthFlow(
+                            authViewModel = authViewModel,
+                            state = loginState
+                        )
+                    }
                 }
             }
         }
@@ -95,8 +101,10 @@ fun AuthFlow(
     authViewModel: AuthViewModel,
     state: LoginState
 ) {
-    var showLoginScreen by remember { mutableStateOf(true) }
     val context = LocalContext.current
+
+    // Estado de login (tela de login ou cadastro)
+    var showLoginScreen by remember { mutableStateOf(true) }
 
     // Tratamento de erros (Toast)
     LaunchedEffect(state) {
@@ -132,19 +140,16 @@ fun AuthFlow(
     }
 }
 
-@PreviewScreenSizes
 @Composable
-fun ReFindUApp(onLogout: () -> Unit = {}) {
+fun ReFindUApp(
+    userName: String,
+    userPhoto: String?,
+    onLogout: () -> Unit = {}
+) {
+    // Estado de navegação (tela atual)
     var currentPage by rememberSaveable { mutableStateOf(MainNavItem.HOME) }
 
-    val isPreview = androidx.compose.ui.platform.LocalInspectionMode.current
-    val (userName, userPhoto) = if (isPreview) Pair("Usuário Visitante", null)
-    else {
-        val user = Firebase.auth.currentUser
-        val name = user?.displayName ?: user?.email ?: stringResource(R.string.usuario)
-        val photo = user?.photoUrl?.toString()
-        Pair(name, photo)
-    }
+    var chatTargetUserUid by rememberSaveable { mutableStateOf<String?>(null) }
 
     NavigationSuiteScaffold(
         navigationSuiteItems = {
@@ -169,16 +174,42 @@ fun ReFindUApp(onLogout: () -> Unit = {}) {
                     },
                     label = { Text(stringResource(it.label)) },
                     selected = it == currentPage,
-                    onClick = { currentPage = it }
+                    onClick = {
+                        currentPage = it
+                        if (it == MainNavItem.CHAT) chatTargetUserUid = null
+                    },
                 )
             }
         }
     ) {
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
             when (currentPage) {
-                MainNavItem.HOME -> HomeScreen(modifier = Modifier.padding(innerPadding))
+                MainNavItem.HOME -> HomeScreen(
+                    modifier = Modifier.padding(innerPadding),
+                    onChat = { targetUid ->
+                        chatTargetUserUid = targetUid
+                        currentPage = MainNavItem.CHAT
+                    }
+                )
                 MainNavItem.SAVES -> SavedScreen(modifier = Modifier.padding(innerPadding))
-                MainNavItem.FAVORITES -> FavoritesScreen(modifier = Modifier.padding(innerPadding))
+                MainNavItem.CHAT -> {
+                    if (chatTargetUserUid != null) {
+                        // Se temos um ID, mostramos a conversa
+                        ChatScreen(
+                            targetUserUid = chatTargetUserUid!!,
+                            onBack = {
+                                chatTargetUserUid = null
+                            }
+                        )
+                    } else {
+                        ChatListScreen(
+                            modifier = Modifier.padding(innerPadding),
+                            onChatClick = { partnerUid ->
+                                chatTargetUserUid = partnerUid
+                            }
+                        )
+                    }
+                }
                 MainNavItem.PROFILE -> {
                     ProfileScreen(
                         modifier = Modifier.padding(innerPadding),
@@ -192,12 +223,24 @@ fun ReFindUApp(onLogout: () -> Unit = {}) {
     }
 }
 
+@PreviewScreenSizes
+@Composable
+fun ReFindUAppPreview() {
+    ReFindUTheme {
+        ReFindUApp(
+            userName = "Usuário Preview",
+            userPhoto = null,
+            onLogout = {}
+        )
+    }
+}
+
 enum class MainNavItem(
     @field:StringRes val label: Int,
     val icon: ImageVector,
 ) {
     HOME(R.string.inicio, Icons.Default.Home),
     SAVES(R.string.salvos, Icons.Default.LocationOn),
-    FAVORITES(R.string.favoritos, Icons.Default.Favorite),
+    CHAT(R.string.mensagens, Icons.AutoMirrored.Filled.Chat),
     PROFILE(R.string.perfil, Icons.Default.AccountCircle),
 }

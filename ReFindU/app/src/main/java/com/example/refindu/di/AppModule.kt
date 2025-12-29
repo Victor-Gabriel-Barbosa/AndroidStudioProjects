@@ -5,6 +5,8 @@ import com.example.refindu.repos.FirebaseAuthRepo
 import com.example.refindu.repos.FirebaseLocalRepo
 import com.example.refindu.repos.LocalRepo
 import com.example.refindu.viewmodels.AuthViewModel
+import com.example.refindu.viewmodels.ChatListViewModel
+import com.example.refindu.viewmodels.ChatViewModel
 import com.example.refindu.viewmodels.HomeViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -17,5 +19,7 @@ val appModule = module {
 
     // Factories de ViewModels com resolução automática de dependências via get()
     viewModel { AuthViewModel(get()) }
-    viewModel { HomeViewModel(get()) }
+    viewModel { HomeViewModel(get(), get()) }
+    viewModel { ChatViewModel() }
+    viewModel { ChatListViewModel() }
 }

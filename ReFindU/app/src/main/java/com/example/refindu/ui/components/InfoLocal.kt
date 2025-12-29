@@ -1,4 +1,4 @@
-package com.example.refindu.ui.screens
+package com.example.refindu.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -26,18 +26,19 @@ import com.example.refindu.R
 import com.example.refindu.models.Local
 
 @Composable
-fun DetailsLocal(
+fun InfoLocal(
     local: Local?,
     userUid: String?,
     onClose: () -> Unit,
     onDelete: (String) -> Unit,
-    onEdit: () -> Unit
+    onEdit: () -> Unit,
+    onChat: (String) -> Unit
 ) {
     // Prepara dados para exibição e verifica se o usuário atual é o criador do registro
     val name = local?.name ?: stringResource(R.string.item_desconhecido)
     val category = local?.category ?: stringResource(R.string.tipo_n_o_informado)
     val radius = local?.radius ?: 0.0
-    val imageUrl = local?.imageUrl
+    val imageUrl = local?.imgUrl
     val isCreator = local?.uid != null && local.uid == userUid
 
     Column(
@@ -47,15 +48,6 @@ fun DetailsLocal(
             .padding(bottom = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Barra visual superior (Drag Handle)
-        Box(
-            modifier = Modifier
-                .padding(vertical = 12.dp)
-                .width(32.dp)
-                .height(4.dp)
-                .background(Color.LightGray.copy(alpha = 0.6f), RoundedCornerShape(2.dp))
-        )
-
         Column(
             modifier = Modifier.padding(horizontal = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -123,7 +115,7 @@ fun DetailsLocal(
                 if (isCreator) {
                     // Controles do Dono (Editar/Excluir)
                     Button(
-                        onClick = { onDelete(local!!.id) },
+                        onClick = { onDelete(local.id) },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.errorContainer,
                             contentColor = MaterialTheme.colorScheme.onErrorContainer
@@ -144,12 +136,21 @@ fun DetailsLocal(
                         Text(stringResource(R.string.editar))
                     }
                 } else {
-                    // Controles de Visitante (Apenas fechar)
+                    // Controles de Visitante
                     Button(
                         onClick = onClose,
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(stringResource(R.string.entendido))
+                    }
+
+                    Button(
+                        onClick = {
+                            if (local?.uid != null) onChat(local.uid)
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(stringResource(R.string.conversar))
                     }
                 }
             }

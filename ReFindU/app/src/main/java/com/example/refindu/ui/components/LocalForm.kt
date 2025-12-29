@@ -1,4 +1,4 @@
-package com.example.refindu.ui.screens
+package com.example.refindu.ui.components
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -31,7 +31,7 @@ import com.example.refindu.R
 fun LocalForm(
     title: String,
     initialRadius: Double,
-    isSaving: Boolean,
+    isLoading: Boolean,
     onRadiusChange: (Double) -> Unit,
     onCancel: () -> Unit,
     onSave: (String, String, Uri?) -> Unit,
@@ -39,12 +39,12 @@ fun LocalForm(
     modifier: Modifier = Modifier,
     initialName: String = "",
     initialCategory: String = "",
-    initialImageUrl: String? = null
+    initialImgUrl: String? = null
 ) {
     // Gerenciamento de estado dos campos (suporta edição e criação)
     var name by remember { mutableStateOf(initialName) }
     var category by remember { mutableStateOf(initialCategory) }
-    var imageUrl by remember { mutableStateOf<Any?>(initialImageUrl) }
+    var imageUrl by remember { mutableStateOf<Any?>(initialImgUrl) }
 
     // Launcher para seleção de mídia da galeria (Photo Picker)
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) {
@@ -58,15 +58,6 @@ fun LocalForm(
             .padding(bottom = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Indicador visual de arraste (Drag Handle)
-        Box(
-            modifier = Modifier
-                .padding(vertical = 12.dp)
-                .width(32.dp)
-                .height(4.dp)
-                .background(Color.LightGray.copy(alpha = 0.6f), RoundedCornerShape(2.dp))
-        )
-
         Column(
             modifier = Modifier.padding(horizontal = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -162,7 +153,7 @@ fun LocalForm(
                 TextButton(
                     onClick = onCancel,
                     modifier = Modifier.weight(1f),
-                    enabled = !isSaving
+                    enabled = !isLoading
                 ) {
                     Text(stringResource(R.string.cancelar))
                 }
@@ -170,9 +161,9 @@ fun LocalForm(
                 Button(
                     onClick = { onSave(name, category, imageUrl as Uri?) },
                     modifier = Modifier.weight(1f),
-                    enabled = !isSaving && name.isNotEmpty()
+                    enabled = !isLoading && name.isNotEmpty()
                 ) {
-                    if (isSaving) CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White)
+                    if (isLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White)
                     else Text(stringResource(R.string.salvar))
                 }
             }

@@ -5,18 +5,22 @@ import androidx.lifecycle.viewModelScope
 import com.example.refindu.models.Local
 import com.example.refindu.repos.AuthRepo
 import com.example.refindu.repos.LocalRepo
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 // ViewModel para Home
 class HomeViewModel(
-    private val repository: LocalRepo
+    private val repository: LocalRepo,
+    private val authRepo: AuthRepo
 ) : ViewModel() {
 
     // Estado de carregamento
@@ -34,6 +38,19 @@ class HomeViewModel(
                 started = SharingStarted.WhileSubscribed(5000),
                 initialValue = emptyList()
             )
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val userLocals: StateFlow<List<Local>> = authRepo.userState
+        .flatMapLatest { user ->
+            if (user?.uid.isNullOrBlank()) flowOf(emptyList())
+            else repository.findByUid(user.uid)
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
 
     // Adiciona um novo local
     fun addLocal(local: Local) {

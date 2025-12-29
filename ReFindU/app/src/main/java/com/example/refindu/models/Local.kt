@@ -11,6 +11,6 @@ data class Local(
     val radius: Double = 0.0,
     val name: String = "",
     val category: String = "",
-    val imageUrl: String? = null,
-    val imageUri: Uri? = null
+    val imgUrl: String? = null,
+    val imgUri: Uri? = null
 )

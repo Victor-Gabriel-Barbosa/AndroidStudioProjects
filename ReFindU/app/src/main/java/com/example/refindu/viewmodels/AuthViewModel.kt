@@ -2,11 +2,17 @@ package com.example.refindu.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.refindu.models.User
 import com.example.refindu.repos.AuthRepo
 import com.google.firebase.auth.AuthCredential
+import com.google.firebase.auth.FirebaseUser
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 // ViewModel para login e logout
@@ -17,10 +23,27 @@ class AuthViewModel(
     private val _loginState = MutableStateFlow<LoginState>(LoginState.Idle)
     val loginState: StateFlow<LoginState> = _loginState.asStateFlow()
 
-    // Verifica se já está logado ao abrir o app
-    val isUserSignedIn: Boolean get() = repository.isUserSignedIn
+    val currentUserState: Flow<User?> = repository.userState
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
 
-    val currenUserUid: String? get() = repository.userUid
+    // Verifica se já está logado ao abrir o app
+    val isUserSignedIn: StateFlow<Boolean?> = currentUserState.map { it != null }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
+
+    val currentUserUid: StateFlow<String?> = currentUserState.map { it?.uid }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
 
     // Tenta logar com e-mail/senha
     fun login(email: String, pass: String) {
