@@ -1,0 +1,59 @@
+package com.example.mapa.ui.componentes
+
+import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.animateLottieCompositionAsState
+import com.airbnb.lottie.compose.rememberLottieComposition
+import com.example.mapa.R
+import com.example.mapa.ui.theme.MapaTheme
+
+/**
+ * Animação simples usando Lottie
+ */
+@Composable
+fun Animacao(
+    animacao: Int,
+    modifier: Modifier = Modifier,
+    loop: Boolean = true,
+    velocidade: Float = 1f,
+    onConcluir: () -> Unit = { }
+) {
+    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(animacao))
+
+    val progresso by animateLottieCompositionAsState(
+        composition = composition,
+        iterations = if (loop) LottieConstants.IterateForever else 1,
+        isPlaying = true,
+        speed = velocidade
+    )
+
+    // Monitora o progresso e executa a função de retorno quando terminar
+    LaunchedEffect(progresso) {
+        if (progresso == 1.0f) { onConcluir() }
+    }
+
+    LottieAnimation(
+        composition = composition,
+        progress = { progresso },
+        modifier = modifier
+    )
+}
+
+@Preview
+@Composable
+private fun AnimacaoPreview() {
+    MapaTheme {
+        Animacao(
+            animacao = R.raw.mapa_animado,
+            modifier = Modifier.size(200.dp)
+        )
+    }
+}

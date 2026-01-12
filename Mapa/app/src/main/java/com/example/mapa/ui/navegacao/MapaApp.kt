@@ -1,0 +1,126 @@
+package com.example.mapa.ui.navegacao
+
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.navigation
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
+import com.example.mapa.models.Usuario
+import com.example.mapa.ui.componentes.AvatarImg
+import com.example.mapa.ui.telas.TelaChat
+import com.example.mapa.ui.telas.TelaChatList
+import com.example.mapa.ui.telas.TelaHome
+import com.example.mapa.ui.telas.TelaPerfil
+import com.example.mapa.ui.telas.TelaSalvos
+
+/**
+ * Lida com a navegação do app
+ */
+@Composable
+fun MapaApp(
+    carregandoFoto: Boolean,
+    usuario: Usuario?,
+    onLogout: () -> Unit,
+    onEditarFoto: (String) -> Unit,
+    onEditarNome: (String) -> Unit,
+) {
+    // Configura e observa a navegação para identificar o destino atual
+    val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val destinoAtual = navBackStackEntry?.destination
+
+    NavigationSuiteScaffold(
+        navigationSuiteItems = {
+            AppNav.entries.forEach { item ->
+                // Verifica se o item está selecionado
+                val selecionado = destinoAtual?.hierarchy?.any { it.hasRoute(item.route::class) } == true
+
+                item(
+                    selected = selecionado,
+                    onClick = {
+                        navController.navigate(item.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    icon = {
+                        if (item == AppNav.PERFIL && usuario?.foto != null) AvatarImg(
+                            foto = usuario.foto,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        else Icon(
+                            if (selecionado) item.iconFill else item.icon,
+                            contentDescription = stringResource(item.label)
+                        )
+                    },
+                    label = { Text(stringResource(item.label)) }
+                )
+            }
+        }
+    ) {
+        Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+            NavHost(
+                navController = navController,
+                startDestination = Rota.Home,
+                modifier = Modifier.padding(innerPadding)
+            ) {
+                composable<Rota.Home> {
+                    TelaHome(
+                        usuario = usuario,
+                        onChat = { navController.navigate(Rota.ChatDetalhe(it)) }
+                    )
+                }
+
+                composable<Rota.Salvos> {
+                    TelaSalvos()
+                }
+
+                navigation<Rota.ChatGraph>(startDestination = Rota.ChatList) {
+                    composable<Rota.ChatList> {
+                        TelaChatList(
+                            onConversaClick = { navController.navigate(Rota.ChatDetalhe(it)) }
+                        )
+                    }
+
+                    composable<Rota.ChatDetalhe> { backStackEntry ->
+                        val args = backStackEntry.toRoute<Rota.ChatDetalhe>()
+
+                        TelaChat(
+                            destinatarioUid = args.uid,
+                            onVoltar = { navController.popBackStack() }
+                        )
+                    }
+                }
+
+                composable<Rota.Perfil> {
+                    TelaPerfil(
+                        carregandoFoto = carregandoFoto,
+                        usuario = usuario,
+                        onLogout = onLogout,
+                        onEditarFoto = onEditarFoto,
+                        onEditarNome = onEditarNome
+                    )
+                }
+            }
+        }
+    }
+}
