@@ -1,5 +1,6 @@
 package com.example.mapa.ui.telas
 
+import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -14,13 +15,9 @@ import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeContent
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -31,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -46,7 +44,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -62,18 +59,18 @@ import com.example.mapa.models.ChatUiState
 import com.example.mapa.models.Mensagem
 import com.example.mapa.models.Usuario
 import com.example.mapa.ui.componentes.AnimacaoCarregando
+import com.example.mapa.ui.componentes.AvatarImg
 import com.example.mapa.ui.componentes.BolhaMsg
 import com.example.mapa.ui.componentes.CarrosselImgs
-import com.example.mapa.ui.componentes.AvatarImg
 import com.example.mapa.ui.componentes.OverlayCarregando
 import com.example.mapa.ui.theme.MapaTheme
+import com.example.mapa.utils.criarUriParaFoto
 import com.example.mapa.viewmodels.ChatViewModel
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TelaChat(
-    destinatarioUid: String,
     onVoltar: () -> Unit,
     modifier: Modifier = Modifier,
     chatViewModel: ChatViewModel = koinViewModel()
@@ -164,7 +161,9 @@ fun Chat(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .windowInsetsPadding(
-                    WindowInsets.ime.exclude(WindowInsets.navigationBars).exclude(WindowInsets.navigationBars).exclude(WindowInsets.navigationBars).exclude(WindowInsets.navigationBars).exclude(WindowInsets.navigationBars)
+                    WindowInsets.ime.exclude(WindowInsets.navigationBars)
+                        .exclude(WindowInsets.navigationBars).exclude(WindowInsets.navigationBars)
+                        .exclude(WindowInsets.navigationBars).exclude(WindowInsets.navigationBars)
                 )
         ) {
             LazyColumn(
@@ -206,15 +205,25 @@ fun ChatEntrada(
     carregandoMsg: Boolean,
     onEnviarMsg: (Mensagem) -> Unit
 ) {
+    val context = LocalContext.current
+
     // Campos de texto e imagem
-    var texto by remember { mutableStateOf("") }
+    var texto by rememberSaveable { mutableStateOf("") }
     var imgs by rememberSaveable { mutableStateOf(listOf<String>()) }
+    var uriTemp by rememberSaveable { mutableStateOf<Uri?>(null) }
 
     // Launcher de seleção de imagem
     val photoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(),
         onResult = { uris -> imgs = imgs + uris.map { it.toString() } }
     )
+
+    // Launcher de captura de imagem
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { sucesso ->
+        if (sucesso && uriTemp != null) imgs = imgs + uriTemp.toString()
+    }
 
     Surface(
         tonalElevation = 2.dp,
@@ -242,20 +251,36 @@ fun ChatEntrada(
                     shape = RoundedCornerShape(24.dp),
                     maxLines = 4,
                     trailingIcon = {
-                        IconButton(
-                            onClick = {
-                                photoPicker.launch(
-                                    PickVisualMediaRequest(
-                                        ActivityResultContracts.PickVisualMedia.ImageOnly
+                        Row {
+                            // Botão de seleção de imagens da galeria
+                            IconButton(
+                                onClick = {
+                                    photoPicker.launch(
+                                        PickVisualMediaRequest(
+                                            ActivityResultContracts.PickVisualMedia.ImageOnly
+                                        )
                                     )
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AttachFile,
+                                    contentDescription = stringResource(R.string.adicionar_imagem)
                                 )
                             }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.AttachFile,
-                                contentDescription = stringResource(R.string.adicionar_imagem),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
+
+                            // Botão de captura de imagem
+                            IconButton(
+                                onClick = {
+                                    val uri = context.criarUriParaFoto()
+                                    uriTemp = uri
+                                    cameraLauncher.launch(uri)
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CameraAlt,
+                                    contentDescription = stringResource(R.string.tirar_foto)
+                                )
+                            }
                         }
                     }
                 )

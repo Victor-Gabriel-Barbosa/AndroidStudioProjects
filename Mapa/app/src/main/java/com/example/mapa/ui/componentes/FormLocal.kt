@@ -1,5 +1,6 @@
 package com.example.mapa.ui.componentes
 
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -12,16 +13,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
@@ -48,6 +48,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -55,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import com.example.mapa.R
 import com.example.mapa.models.Local
 import com.example.mapa.ui.theme.MapaTheme
+import com.example.mapa.utils.criarUriParaFoto
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -88,11 +90,14 @@ fun FormLocal(
     onFechar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
+
     // Variáveis de estado para os campos do formulário
     var nome by rememberSaveable { mutableStateOf(localInicial.nome) }
     var tipoSelecionado by rememberSaveable { mutableStateOf(localInicial.tipo) }
     var descricao by rememberSaveable { mutableStateOf(localInicial.descricao) }
     var imgs by rememberSaveable { mutableStateOf(localInicial.imgUrls) }
+    var uriTemp by rememberSaveable { mutableStateOf<Uri?>(null) }
 
     // Estado do DatePicker
     val datePickerState = rememberDatePickerState(
@@ -113,6 +118,13 @@ fun FormLocal(
         contract = ActivityResultContracts.PickMultipleVisualMedia(),
         onResult = { uris -> imgs = imgs + uris.map { it.toString() } }
     )
+
+    // Launcher de captura de imagem
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { sucesso ->
+        if (sucesso && uriTemp != null) imgs = imgs + uriTemp.toString()
+    }
 
     // Estado da seletor de tipo
     var expandido by rememberSaveable { mutableStateOf(false) }
@@ -307,24 +319,48 @@ fun FormLocal(
                     onRemoverImg = { imgs = imgs - it }
                 )
 
-                OutlinedButton(
-                    onClick = {
-                        photoPicker.launch(
-                            PickVisualMediaRequest(
-                                ActivityResultContracts.PickVisualMedia.ImageOnly
+                Row {
+                    // Botão de seleção de imagens da galeria
+                    OutlinedButton(
+                        onClick = {
+                            photoPicker.launch(
+                                PickVisualMediaRequest(
+                                    ActivityResultContracts.PickVisualMedia.ImageOnly
+                                )
                             )
+                        },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AddPhotoAlternate,
+                            contentDescription = stringResource(R.string.adicionar_imagem)
                         )
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.AddPhotoAlternate,
-                        contentDescription = stringResource(R.string.adicionar_imagem)
-                    )
+
+                        Spacer(Modifier.width(8.dp))
+
+                        Text(stringResource(R.string.adicionar_foto))
+                    }
 
                     Spacer(Modifier.width(8.dp))
 
-                    Text(stringResource(R.string.adicionar_foto))
+                    // Botão de captura de imagem
+                    OutlinedButton(
+                        onClick = {
+                            val uri = context.criarUriParaFoto()
+                            uriTemp = uri
+                            cameraLauncher.launch(uri)
+                        },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AddAPhoto,
+                            contentDescription = stringResource(R.string.tirar_foto)
+                        )
+
+                        Spacer(Modifier.width(8.dp))
+
+                        Text(stringResource(R.string.tirar_foto))
+                    }
                 }
             }
 

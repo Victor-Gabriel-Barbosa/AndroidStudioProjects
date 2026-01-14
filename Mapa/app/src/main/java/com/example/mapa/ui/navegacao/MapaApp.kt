@@ -121,11 +121,8 @@ fun MapaApp(
                         )
                     }
 
-                    composable<Rota.ChatDetalhe> { backStackEntry ->
-                        val args = backStackEntry.toRoute<Rota.ChatDetalhe>()
-
+                    composable<Rota.ChatDetalhe> {
                         TelaChat(
-                            destinatarioUid = args.uid,
                             onVoltar = { navController.popBackStack() }
                         )
                     }
