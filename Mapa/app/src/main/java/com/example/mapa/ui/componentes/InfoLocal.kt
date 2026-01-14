@@ -47,7 +47,20 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Detalhes e informações de um local
+ * Componente que exibe os detalhes e informações de um [Local] específico.
+ *
+ * Mostra informações como nome, tipo, data, descrição e raio.
+ * Apresenta um carrossel de imagens, se houver.
+ * Oferece botões de ação diferentes dependendo se o usuário atual é o criador do registro:
+ * - Se for o criador: botões para "Excluir" e "Editar".
+ * - Se não for o criador: botões para "Cancelar" e "Conversar" (iniciar chat).
+ *
+ * @param local O objeto [Local] cujos detalhes serão exibidos.
+ * @param usuarioUid O UID do usuário logado, para verificar se ele é o criador do local.
+ * @param onFechar Callback para fechar a visualização dos detalhes.
+ * @param onExcluir Callback para solicitar a exclusão do local, passando o ID do local.
+ * @param onEditar Callback para iniciar a edição do local.
+ * @param onChat Callback para iniciar um chat com o criador do local, passando o UID do criador.
  */
 @Composable
 fun InfoLocal(
@@ -224,7 +237,7 @@ fun InfoLocal(
                 if (criador) {
                     // (Editar/Excluir)
                     Button(
-                        onClick = { onExcluir(local.id) },
+                        onClick = { local.id.let(onExcluir) },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.errorContainer,
                             contentColor = MaterialTheme.colorScheme.onErrorContainer
@@ -275,6 +288,12 @@ fun InfoLocal(
     }
 }
 
+/**
+ * Preview do componente [InfoLocal].
+ *
+ * Simula a visualização dos detalhes de um local onde o usuário logado é o criador,
+ * mostrando os botões de "Excluir" e "Editar".
+ */
 @Preview(showBackground = true)
 @Composable
 private fun InfoLocalPreview() {

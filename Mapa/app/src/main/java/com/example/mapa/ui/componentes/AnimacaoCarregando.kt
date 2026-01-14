@@ -13,7 +13,16 @@ import androidx.compose.ui.unit.dp
 import com.example.mapa.ui.theme.MapaTheme
 
 /**
- * Animação de circulo de pregresso de carregamento
+ * Um componente [CircularProgressIndicator] reutilizável que exibe uma animação de carregamento.
+ *
+ * Este componente é uma abstração sobre o `CircularProgressIndicator` do Material3,
+ * permitindo uma customização fácil de tamanho, cor, espessura da linha e cor de fundo.
+ *
+ * @param modifier O [Modifier] a ser aplicado ao indicador de progresso.
+ * @param size O diâmetro do indicador de progresso circular.
+ * @param color A cor do indicador de progresso.
+ * @param strokeWidth A espessura da linha do indicador de progresso.
+ * @param trackColor A cor do círculo de fundo (trilha) sobre o qual o indicador é desenhado.
  */
 @Composable
 fun AnimacaoCarregando(
@@ -32,6 +41,9 @@ fun AnimacaoCarregando(
     )
 }
 
+/**
+ * Preview para o componente [AnimacaoCarregando].
+ */
 @Preview
 @Composable
 private fun AnimacaoCarregandoPreview() {

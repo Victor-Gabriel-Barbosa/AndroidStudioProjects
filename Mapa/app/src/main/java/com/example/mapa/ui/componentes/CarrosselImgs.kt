@@ -39,7 +39,17 @@ import com.example.mapa.R
 import com.example.mapa.ui.theme.MapaTheme
 
 /**
- * Carrossel de imagens com zoom e remoção de imagem (opcional)
+ * Componente de carrossel que exibe uma lista de imagens utilizando [HorizontalMultiBrowseCarousel].
+ *
+ * Funcionalidades:
+ * - Exibe imagens em um carrossel horizontal.
+ * - Suporta visualização ampliada ao clicar em uma imagem (via [DialogImg]).
+ * - Oferece a opção de remover imagens se o callback [onRemoverImg] for fornecido.
+ * - Exibe ícones de placeholder e erro durante o carregamento das imagens.
+ *
+ * @param imgs Lista de strings contendo as URLs ou caminhos das imagens.
+ * @param modifier [Modifier] para customizar o layout do container.
+ * @param onRemoverImg Callback opcional para tratar a remoção de uma imagem.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,10 +61,10 @@ fun CarrosselImgs(
     if (imgs.isEmpty()) return
 
     // Diálogo de imagem com zoom
-    var dialogImg by rememberSaveable { mutableStateOf<String?>(null) }
+    var mostrarDialogImg by rememberSaveable { mutableStateOf<String?>(null) }
     DialogImg(
-        img = dialogImg,
-        onFechar = { dialogImg = null }
+        img = mostrarDialogImg,
+        onFechar = { mostrarDialogImg = null }
     )
 
     Column(
@@ -79,7 +89,7 @@ fun CarrosselImgs(
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                         modifier = Modifier
                             .fillMaxSize()
-                            .clickable { dialogImg = imgs[index] }
+                            .clickable { mostrarDialogImg = imgs[index] }
                     ) {
                         AsyncImage(
                             model = imgs[index],
@@ -117,6 +127,9 @@ fun CarrosselImgs(
     }
 }
 
+/**
+ * Preview do componente [CarrosselImgs] com imagens de exemplo.
+ */
 @Preview
 @Composable
 private fun CarrosselImgsPreview() {

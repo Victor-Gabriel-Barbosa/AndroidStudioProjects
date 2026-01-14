@@ -1,9 +1,12 @@
 package com.example.mapa.ui.navegacao
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
@@ -30,7 +33,18 @@ import com.example.mapa.ui.telas.TelaPerfil
 import com.example.mapa.ui.telas.TelaSalvos
 
 /**
- * Lida com a navegação do app
+ * Composable principal que configura a estrutura de navegação do aplicativo.
+ *
+ * Utiliza um [NavigationSuiteScaffold] para fornecer a barra de navegação principal
+ * e um [NavHost] para gerenciar as transições entre as diferentes telas (`TelaHome`, `TelaChat`, `TelaPerfil`, etc.).
+ * Ele observa o back stack de navegação para destacar o item de navegação correto.
+ *
+ * @param carregandoFoto Indica se a foto do perfil está sendo carregada/atualizada,
+ * para exibir feedback visual na [TelaPerfil].
+ * @param usuario O objeto [Usuario] do usuário atualmente logado. Nulo se não houver usuário logado.
+ * @param onLogout Callback acionado quando o usuário solicita o logout.
+ * @param onEditarFoto Callback acionado quando o usuário edita a foto do perfil.
+ * @param onEditarNome Callback acionado quando o usuário edita o nome do perfil.
  */
 @Composable
 fun MapaApp(
@@ -49,12 +63,12 @@ fun MapaApp(
         navigationSuiteItems = {
             AppNav.entries.forEach { item ->
                 // Verifica se o item está selecionado
-                val selecionado = destinoAtual?.hierarchy?.any { it.hasRoute(item.route::class) } == true
+                val selecionado = destinoAtual?.hierarchy?.any { it.hasRoute(item.rota::class) } == true
 
                 item(
                     selected = selecionado,
                     onClick = {
-                        navController.navigate(item.route) {
+                        navController.navigate(item.rota) {
                             popUpTo(navController.graph.findStartDestination().id) {
                                 saveState = true
                             }
@@ -65,10 +79,16 @@ fun MapaApp(
                     icon = {
                         if (item == AppNav.PERFIL && usuario?.foto != null) AvatarImg(
                             foto = usuario.foto,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier
+                                .size(24.dp)
+                                .border(
+                                    width = if (selecionado) 1.dp else 0.dp,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    shape = CircleShape
+                                )
                         )
                         else Icon(
-                            if (selecionado) item.iconFill else item.icon,
+                            imageVector = if (selecionado) item.iconFill else item.icon,
                             contentDescription = stringResource(item.label)
                         )
                     },

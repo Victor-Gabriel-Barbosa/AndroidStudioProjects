@@ -23,7 +23,14 @@ import com.example.mapa.ui.telas.TelaSignUp
 import com.example.mapa.viewmodels.AuthViewModel
 
 /**
- * Lida com o fluxo de autenticação (login e cadastro)
+ * Lida com o fluxo de autenticação (login e cadastro).
+ *
+ * Este composable gerencia a navegação entre as telas de login e cadastro,
+ * observa o estado do login e exibe mensagens de erro ou sucesso.
+ *
+ * @param authViewModel O ViewModel que gerencia o estado de autenticação.
+ * @param loginState O estado atual do processo de login.
+ * @param onLoginConcluido Callback a ser invocado quando o login for concluído com sucesso.
  */
 @Composable
 fun AuthFlow(

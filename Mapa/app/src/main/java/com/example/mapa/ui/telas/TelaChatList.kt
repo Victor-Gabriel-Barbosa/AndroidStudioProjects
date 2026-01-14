@@ -40,15 +40,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.mapa.R
-import com.example.mapa.models.ChatItem
 import com.example.mapa.models.Chat
+import com.example.mapa.models.ChatItem
 import com.example.mapa.models.ChatListUiState
 import com.example.mapa.models.Mensagem
 import com.example.mapa.models.Usuario
 import com.example.mapa.ui.componentes.Animacao
 import com.example.mapa.ui.componentes.AvatarImg
-import com.example.mapa.ui.componentes.OverlayCarregando
 import com.example.mapa.ui.componentes.Header
+import com.example.mapa.ui.componentes.OverlayCarregando
 import com.example.mapa.ui.theme.MapaTheme
 import com.example.mapa.viewmodels.ChatListViewModel
 import org.koin.androidx.compose.koinViewModel
@@ -246,6 +246,7 @@ fun ConversaItem(
 ) {
     ListItem(
         modifier = Modifier.clickable { onClick() },
+        tonalElevation = 4.dp,
         leadingContent = {
             AvatarImg(
                 foto = foto,

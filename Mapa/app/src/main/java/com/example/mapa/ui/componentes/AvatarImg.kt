@@ -26,7 +26,12 @@ import com.example.mapa.R
 import com.example.mapa.ui.theme.MapaTheme
 
 /**
- * Imagem de conta com feedback de carregamento
+ * Componente que exibe a imagem de perfil do usuário em formato circular.
+ * Utiliza a biblioteca Coil para carregamento assíncrono e exibe um feedback
+ * de carregamento ou um ícone de erro caso a imagem não possa ser carregada.
+ *
+ * @param foto URL ou caminho da imagem de perfil. Se nulo, exibirá o estado de erro.
+ * @param modifier [Modifier] para customizar o layout, tamanho e comportamento do componente.
  */
 @Composable
 fun AvatarImg(
@@ -64,6 +69,9 @@ fun AvatarImg(
     }
 }
 
+/**
+ * Preview do componente [AvatarImg].
+ */
 @Preview
 @Composable
 private fun AvatarImgPreview() {

@@ -61,7 +61,21 @@ import java.util.Locale
 import java.util.TimeZone
 
 /**
- * Formulário para adicionar ou editar um local
+ * Componente de formulário para adicionar ou editar um local.
+ *
+ * Este formulário contém campos para nome, tipo (perdido/encontrado), data, descrição,
+ * um seletor de raio e um seletor de imagens. Gerencia seu próprio estado interno
+ * para os campos de texto e seletores, e utiliza callbacks para notificar eventos
+ * como salvar, fechar e alterar o raio.
+ *
+ * @param titulo O título a ser exibido no cabeçalho do formulário.
+ * @param carregando Indica se o estado de carregamento deve ser exibido no botão de salvar.
+ * @param onRaioChange Callback invocado quando o valor do slider de raio é alterado.
+ * @param localInicial O objeto [Local] com os dados iniciais para popular o formulário.
+ * @param onSalvar Callback invocado quando o usuário clica no botão "Salvar",
+ * passando o objeto [Local] atualizado com os dados do formulário.
+ * @param onFechar Callback invocado para fechar o formulário (botão de fechar ou cancelar).
+ * @param modifier O [Modifier] a ser aplicado ao contêiner principal do formulário.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -350,6 +364,10 @@ fun FormLocal(
     }
 }
 
+/**
+ * Preview para o componente [FormLocal].
+ * Exibe o formulário no estado de carregamento.
+ */
 @Preview(showBackground = true)
 @Composable
 private fun FormLocalPreview() {

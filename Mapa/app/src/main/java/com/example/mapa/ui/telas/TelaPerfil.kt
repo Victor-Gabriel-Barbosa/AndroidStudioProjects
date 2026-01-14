@@ -50,9 +50,8 @@ fun TelaPerfil(
     modifier: Modifier = Modifier,
     usuario: Usuario? = null
 ) {
-    // Estados de edição de nome
-    var editarDialog by rememberSaveable { mutableStateOf(false) }
-    var nome by rememberSaveable { mutableStateOf(usuario?.nome ?: "") }
+    // Estado dos diálogo de edição
+    var mostrarDialogEditar by rememberSaveable { mutableStateOf(false) }
 
     // Launcher de seleção de imagem
     val photoPickerLauncher = rememberLauncherForActivityResult(
@@ -64,14 +63,14 @@ fun TelaPerfil(
 
     // Dialog de edição de nome
     DialogEditar(
-        visivel = editarDialog,
-        textoInicial = nome,
+        visivel = mostrarDialogEditar,
+        textoInicial = usuario?.nome ?: "",
         titulo = stringResource(R.string.editar_nome),
-        labelCampo = stringResource(R.string.nome),
-        onFechar = { editarDialog = false },
+        label = stringResource(R.string.nome),
+        onFechar = { mostrarDialogEditar = false },
         onConfirmar = {
             onEditarNome(it)
-            editarDialog = false
+            mostrarDialogEditar = false
         }
     )
 
@@ -94,12 +93,14 @@ fun TelaPerfil(
                 modifier = Modifier.size(120.dp),
                 contentAlignment = Alignment.Center
             ) {
+                // Avatar com feedback de carregamento
                 if (carregandoFoto) AnimacaoCarregando()
                 else AvatarImg(
                     foto = usuario?.foto,
                     modifier = Modifier.size(120.dp)
                 )
 
+                // Botão de edição de foto
                 IconButton(
                     onClick = {
                         photoPickerLauncher.launch(
@@ -115,8 +116,8 @@ fun TelaPerfil(
                 ) {
                     Icon(
                         imageVector = Icons.Default.CameraAlt,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurface
+                        contentDescription = stringResource(R.string.alterar_foto),
+                        tint = MaterialTheme.colorScheme.onSurface,
                     )
                 }
             }
@@ -131,15 +132,22 @@ fun TelaPerfil(
                     style = MaterialTheme.typography.headlineMedium
                 )
 
+                // Botão de edição de nome
                 IconButton(
-                    onClick = { editarDialog = !editarDialog },
+                    onClick = { mostrarDialogEditar = !mostrarDialogEditar },
                 ) {
                     Icon(
                         imageVector = Icons.Default.Edit,
-                        contentDescription = stringResource(R.string.editar),
+                        contentDescription = stringResource(R.string.editar_nome),
                     )
                 }
             }
+
+            Text(
+                text = usuario?.email ?: "",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
             Spacer(modifier = Modifier.height(32.dp))
 

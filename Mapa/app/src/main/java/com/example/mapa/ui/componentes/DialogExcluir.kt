@@ -19,7 +19,16 @@ import com.example.mapa.R
 import com.example.mapa.ui.theme.MapaTheme
 
 /**
- * Diálogo de confirmação de exclusão
+ * Um componente de diálogo de alerta reutilizável para confirmar uma ação de exclusão.
+ * Exibe um ícone de aviso, título, mensagem e botões de confirmação e cancelamento.
+ *
+ * @param visivel Controla se o diálogo está visível ou não.
+ * @param titulo O texto a ser exibido como título do diálogo.
+ * @param mensagem O corpo do texto do diálogo, descrevendo a ação.
+ * @param onConfirmar Callback invocado quando o usuário clica no botão de confirmação.
+ * @param onCancelar Callback invocado quando o usuário clica no botão de cancelar ou fecha o diálogo.
+ * @param textoConfirmar O texto para o botão de confirmação. O padrão é "Sim, excluir".
+ * @param textoCancelar O texto para o botão de cancelar. O padrão é "Cancelar".
  */
 @Composable
 fun DialogExcluir(
@@ -82,6 +91,9 @@ fun DialogExcluir(
     )
 }
 
+/**
+ * Preview para o componente [DialogExcluir].
+ */
 @Preview
 @Composable
 private fun DialogExcluirPreview() {

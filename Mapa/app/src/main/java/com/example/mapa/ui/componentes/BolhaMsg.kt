@@ -47,7 +47,13 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Bolha de mensagem com opções de edição e exclusão
+ * Componente que exibe uma bolha de mensagem no chat.
+ * Suporta mensagens de texto, imagens, indicadores de leitura e menu de opções (editar/excluir).
+ *
+ * @param msg O objeto [Mensagem] contendo os dados da mensagem a ser exibida.
+ * @param remetente Indica se a mensagem foi enviada pelo usuário atual (alinha à direita e mostra opções).
+ * @param onEditar Callback invocado quando o usuário confirma a edição da mensagem.
+ * @param onExcluir Callback invocado quando o usuário confirma a exclusão da mensagem.
  */
 @Composable
 fun BolhaMsg(
@@ -202,7 +208,7 @@ fun BolhaMsg(
         visivel = editarDialog,
         textoInicial = msg.texto,
         titulo = stringResource(R.string.editar_mensagem),
-        labelCampo = stringResource(R.string.mensagem),
+        label = stringResource(R.string.mensagem),
         onFechar = { editarDialog = false },
         onConfirmar = {
             editarDialog = false
@@ -211,9 +217,12 @@ fun BolhaMsg(
     )
 }
 
+/**
+ * Preview das bolhas de mensagem em um contexto de chat.
+ */
 @Preview
 @Composable
-fun TelaHomePreview() {
+fun BolhaMsgPreview() {
     MapaTheme {
         Column(modifier = Modifier.padding(16.dp)) {
             BolhaMsg(

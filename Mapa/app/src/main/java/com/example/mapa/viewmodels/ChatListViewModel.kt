@@ -1,5 +1,6 @@
 package com.example.mapa.viewmodels
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mapa.models.ChatItem
@@ -27,7 +28,6 @@ class ChatListViewModel(
     authRepo: AuthRepo,
     private val usuarioRepo: UsuarioRepo
 ) : ViewModel() {
-
     // Uid do usuário logado
     private val usuarioUid: StateFlow<String?> = authRepo.usuarioState
         .map { it?.uid }
@@ -62,7 +62,7 @@ class ChatListViewModel(
             emit(ChatListUiState(carregando = true))
         }
         .catch { e ->
-            e.printStackTrace()
+            Log.e("ChatListViewModel", "uiState: ${e.message}")
             emit(ChatListUiState(carregando = false, erro = e.message ?: "Erro desconhecido"))
         }
         .stateIn(

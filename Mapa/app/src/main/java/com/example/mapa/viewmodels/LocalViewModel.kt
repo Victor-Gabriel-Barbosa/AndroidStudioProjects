@@ -1,5 +1,6 @@
 package com.example.mapa.viewmodels
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mapa.repositories.AuthRepo
@@ -24,7 +25,6 @@ class LocalViewModel(
     private val localRepo: LocalRepo,
     authRepo: AuthRepo
 ) : ViewModel() {
-
     // Estado de carregamento
     private val _carregando = MutableStateFlow(false)
     val carregando = _carregando.asStateFlow()
@@ -62,7 +62,10 @@ class LocalViewModel(
 
             localRepo.save(local)
                 .onSuccess { _mensagens.send("Local salvo com sucesso!") }
-                .onFailure { e -> _mensagens.send("Erro ao salvar: ${e.message}") }
+                .onFailure { e ->
+                    Log.e("LocalViewModel", "adicionarLocal: ${e.message}")
+                    _mensagens.send("Erro ao salvar: ${e.message}")
+                }
 
             _carregando.value = false
         }
@@ -75,7 +78,10 @@ class LocalViewModel(
 
             localRepo.updateById(local.id, local)
                 .onSuccess { _mensagens.send("Local atualizado!") }
-                .onFailure { _mensagens.send("Falha ao atualizar.") }
+                .onFailure { e ->
+                    Log.e("LocalViewModel", "editarLocal: ${e.message}")
+                    _mensagens.send("Falha ao atualizar: ${e.message}")
+                }
 
             _carregando.value = false
         }
@@ -88,7 +94,10 @@ class LocalViewModel(
 
             localRepo.deleteById(id)
                 .onSuccess { _mensagens.send("Local removido com sucesso!") }
-                .onFailure { e -> _mensagens.send("Erro ao remover: ${e.message}") }
+                .onFailure { e ->
+                    Log.e("LocalViewModel", "removerLocal: ${e.message}")
+                    _mensagens.send("Erro ao remover: ${e.message}")
+                }
 
             _carregando.value = false
         }

@@ -25,7 +25,7 @@ fun DialogEditar(
     visivel: Boolean,
     textoInicial: String,
     titulo: String,
-    labelCampo: String,
+    label: String,
     onFechar: () -> Unit,
     onConfirmar: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -43,7 +43,7 @@ fun DialogEditar(
             OutlinedTextField(
                 value = texto,
                 onValueChange = { texto = it },
-                label = { Text(labelCampo) },
+                label = { Text(label) },
                 modifier = Modifier.fillMaxWidth()
             )
         },
@@ -75,7 +75,7 @@ private fun DialogEditarPreview() {
             visivel = true,
             textoInicial = "Victor",
             titulo = stringResource(R.string.editar_nome),
-            labelCampo = stringResource(R.string.nome),
+            label = stringResource(R.string.nome),
             onFechar = { },
             onConfirmar = { }
         )

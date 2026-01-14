@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -24,7 +23,11 @@ import androidx.compose.ui.unit.dp
 import com.example.mapa.ui.theme.MapaTheme
 
 /**
- * Cabeçalho com ícone e título
+ * Um componente de cabeçalho que exibe um ícone e um título.
+ *
+ * @param titulo O texto a ser exibido como título no cabeçalho.
+ * @param icone O ID do recurso drawable para o ícone a ser exibido.
+ * @param modifier O [Modifier] a ser aplicado a este componente.
  */
 @Composable
 fun Header(
@@ -61,6 +64,9 @@ fun Header(
     }
 }
 
+/**
+ * Preview do componente [Header].
+ */
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun HeaderPreview() {

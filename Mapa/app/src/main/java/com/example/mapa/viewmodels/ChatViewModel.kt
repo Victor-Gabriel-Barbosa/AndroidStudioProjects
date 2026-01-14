@@ -1,5 +1,7 @@
 package com.example.mapa.viewmodels
 
+import android.util.Log
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mapa.models.Chat
@@ -15,6 +17,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
@@ -32,10 +35,17 @@ import kotlinx.coroutines.launch
 class ChatViewModel(
     private val chatRepo: ChatRepo,
     authRepo: AuthRepo,
-    private val usuarioRepo: UsuarioRepo
+    private val usuarioRepo: UsuarioRepo,
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
-    // Uid do outro usuário na sala
-    private val _destinatarioUid = MutableStateFlow<String?>(null)
+    // Argumentos da rota de chat
+    private val destinatarioArg: String? = savedStateHandle["uid"]
+    private val _destinatarioUid = MutableStateFlow(destinatarioArg)
+
+    // Estado de carregamento
+    private val _carregandoMsg = MutableStateFlow(false)
+    val carregandoMsg = _carregandoMsg.asStateFlow()
+
 
     // Canal de mensagens
     private val _mensagens = Channel<String>(Channel.BUFFERED)
@@ -68,16 +78,12 @@ class ChatViewModel(
             initialValue = ChatUiState(carregando = true)
         )
 
-    // Inicia o chat com o outro usuário
-    fun iniciarChat(destinatarioUid: String) {
-        _destinatarioUid.value = destinatarioUid
-    }
-
     // Carrega as mensagens do chat
     private fun carregarMsgsFlow(salaId: String): Flow<List<Mensagem>> {
         return chatRepo.findById(salaId)
             .onEach { msgs -> marcarMsgsComoLidas(salaId, msgs) }
             .catch { e ->
+                Log.e("ChatViewModel", "carregarMsgsFlow: ${e.message}")
                 _mensagens.send("Erro ao carregar mensagens: ${e.message}")
                 emit(emptyList())
             }
@@ -88,6 +94,7 @@ class ChatViewModel(
         return usuarioRepo.findByUid(uid)
             .map { it.firstOrNull() }
             .catch {
+                Log.e("ChatViewModel", "carregarDestinatarioFlow: ${it.message}")
                 _mensagens.send("Erro ao carregar destinatario: ${it.message}")
                 emit(null)
             }
@@ -109,15 +116,19 @@ class ChatViewModel(
         )
 
         val chatResumo = Chat(
-            ultimaMsg = msg,
+            ultimaMsg = novaMsg,
             ultimoTimestamp = novaMsg.timestamp,
             participantes = listOf(remetenteUid, destinatario)
         )
 
         viewModelScope.launch {
+            _carregandoMsg.value = true
             chatRepo.save(salaId, novaMsg, chatResumo)
-                .onSuccess { _mensagens.send("Mensagem enviada!") }
-                .onFailure { e -> _mensagens.send("Falha ao enviar: ${e.message}") }
+                .onFailure { e ->
+                    Log.e("ChatViewModel", "enviarMsg: ${e.message}")
+                    _mensagens.send("Falha ao enviar: ${e.message}")
+                }
+            _carregandoMsg.value = false
         }
     }
 
@@ -128,9 +139,13 @@ class ChatViewModel(
         val salaId = gerarSalaId(meuUid, destinatarioUid)
 
         viewModelScope.launch {
+            _carregandoMsg.value = true
             chatRepo.updateMsgById(salaId, msgId, novaMsg)
-                .onSuccess { _mensagens.send("Mensagem atualizada!") }
-                .onFailure { e -> _mensagens.send("Falha ao atualizar: ${e.message}") }
+                .onFailure { e ->
+                    Log.e("ChatViewModel", "editarMsg: ${e.message}")
+                    _mensagens.send("Falha ao atualizar: ${e.message}")
+                }
+            _carregandoMsg.value = false
         }
     }
 
@@ -141,9 +156,13 @@ class ChatViewModel(
         val salaId = gerarSalaId(meuUid, destinatarioUid)
 
         viewModelScope.launch {
+            _carregandoMsg.value = true
             chatRepo.deleteMsgById(salaId, msgId)
-                .onSuccess { _mensagens.send("Mensagem excluída!") }
-                .onFailure { e -> _mensagens.send("Falha ao excluir: ${e.message}") }
+                .onFailure { e ->
+                    Log.e("ChatViewModel", "excluirMsg: ${e.message}")
+                    _mensagens.send("Falha ao excluir: ${e.message}")
+                }
+            _carregandoMsg.value = false
         }
     }
 
@@ -155,8 +174,10 @@ class ChatViewModel(
         if (precisaAtualizar) {
             viewModelScope.launch {
                 chatRepo.updateMsgsLidasById(salaId, destinatarioUid)
-                    .onFailure { e -> _mensagens.send("Falha ao marcar como lida: ${e.message}") }
-                    .onSuccess { _mensagens.send("Mensagens marcadas como lidas!") }
+                    .onFailure { e ->
+                        Log.e("ChatViewModel", "marcarMsgsComoLidas: ${e.message}")
+                        _mensagens.send("Falha ao marcar como lida: ${e.message}")
+                    }
             }
         }
     }

@@ -16,7 +16,13 @@ import com.example.mapa.R
 import com.example.mapa.ui.theme.MapaTheme
 
 /**
- * Animação simples usando Lottie
+ * Componente de animação que utiliza a biblioteca Lottie para exibir arquivos JSON de animação.
+ *
+ * @param animacao Referência para o recurso raw da animação (ex: [R.raw.mapa_animado]).
+ * @param modifier Modificador para ajustar o layout, tamanho ou comportamento do componente.
+ * @param loop Se verdadeiro, a animação será repetida infinitamente.
+ * @param velocidade A escala de velocidade da reprodução (1.0f é a velocidade normal).
+ * @param onConcluir Callback chamado quando a animação atinge o final do ciclo (100% de progresso).
  */
 @Composable
 fun Animacao(
@@ -47,6 +53,9 @@ fun Animacao(
     )
 }
 
+/**
+ * Preview do componente [Animacao] exibindo uma animação de exemplo.
+ */
 @Preview
 @Composable
 private fun AnimacaoPreview() {

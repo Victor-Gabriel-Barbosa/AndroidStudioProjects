@@ -10,12 +10,19 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeContent
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -51,8 +58,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.mapa.R
+import com.example.mapa.models.ChatUiState
 import com.example.mapa.models.Mensagem
 import com.example.mapa.models.Usuario
+import com.example.mapa.ui.componentes.AnimacaoCarregando
 import com.example.mapa.ui.componentes.BolhaMsg
 import com.example.mapa.ui.componentes.CarrosselImgs
 import com.example.mapa.ui.componentes.AvatarImg
@@ -71,11 +80,6 @@ fun TelaChat(
 ) {
     val context = LocalContext.current
 
-    // Inicia a conversa com o parceiro
-    LaunchedEffect(destinatarioUid) {
-        chatViewModel.iniciarChat(destinatarioUid)
-    }
-
     // Feedback visual (Toasts) vindo do ViewModel
     LaunchedEffect(Unit) {
         chatViewModel.mensagens.collect { msg ->
@@ -85,13 +89,11 @@ fun TelaChat(
 
     // Coleta o estado do ViewModel de chat
     val uiState by chatViewModel.uiState.collectAsStateWithLifecycle()
-    val remetenteUid by chatViewModel.remetenteUid.collectAsStateWithLifecycle()
+    val carregandoMsg by chatViewModel.carregandoMsg.collectAsStateWithLifecycle()
 
     Chat(
-        msgs = uiState.msgs,
-        remetenteUid = remetenteUid,
-        destinatario = uiState.destinatario,
-        carregando = uiState.carregando,
+        chatState = uiState,
+        carregandoMsg = carregandoMsg,
         onVoltar = onVoltar,
         onEnviarMsg = chatViewModel::enviarMsg,
         onEditarMsg = chatViewModel::editarMsg,
@@ -103,10 +105,8 @@ fun TelaChat(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Chat(
-    msgs: List<Mensagem>,
-    remetenteUid: String?,
-    destinatario: Usuario?,
-    carregando: Boolean,
+    chatState: ChatUiState,
+    carregandoMsg: Boolean,
     onVoltar: () -> Unit,
     onEnviarMsg: (Mensagem) -> Unit,
     onEditarMsg: (String, Mensagem) -> Unit,
@@ -115,8 +115,8 @@ fun Chat(
 ) {
     // Scroll da lista de mensagens
     val listState = rememberLazyListState()
-    LaunchedEffect(msgs.size) {
-        if (msgs.isNotEmpty()) listState.animateScrollToItem(msgs.size - 1)
+    LaunchedEffect(chatState.msgs.size) {
+        if (chatState.msgs.isNotEmpty()) listState.animateScrollToItem(chatState.msgs.size - 1)
     }
 
     Scaffold(
@@ -130,14 +130,14 @@ fun Chat(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         AvatarImg(
-                            foto = destinatario?.foto,
+                            foto = chatState.destinatario?.foto,
                             modifier = Modifier.size(40.dp)
                         )
 
                         Spacer(Modifier.width(12.dp))
 
                         Text(
-                            text = destinatario?.nome ?: stringResource(R.string.carregando),
+                            text = chatState.destinatario?.nome ?: stringResource(R.string.carregando),
                             style = MaterialTheme.typography.titleMedium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -163,7 +163,9 @@ fun Chat(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .imePadding()
+                .windowInsetsPadding(
+                    WindowInsets.ime.exclude(WindowInsets.navigationBars).exclude(WindowInsets.navigationBars).exclude(WindowInsets.navigationBars).exclude(WindowInsets.navigationBars).exclude(WindowInsets.navigationBars)
+                )
         ) {
             LazyColumn(
                 state = listState,
@@ -174,31 +176,35 @@ fun Chat(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 items(
-                    items = msgs,
+                    items = chatState.msgs,
                     key = { it.id }
                 ) { msg ->
-                    remetenteUid?.let { uid ->
+                    chatState.destinatario?.uid?.let { uid ->
                         BolhaMsg(
                             msg = msg,
-                            remetente = msg.remetenteUid == uid,
+                            remetente = msg.remetenteUid != uid,
                             onEditar = onEditarMsg,
                             onExcluir = onExcluirMsg
                         )
                     }
                 }
             }
-            ChatEntrada(onEnviarMensagem = onEnviarMsg)
+            ChatEntrada(
+                carregandoMsg = carregandoMsg,
+                onEnviarMsg = onEnviarMsg
+            )
         }
 
         // Feedback de carregamento
-        if (carregando && msgs.isEmpty()) OverlayCarregando()
+        if (chatState.carregando && chatState.msgs.isEmpty()) OverlayCarregando()
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatEntrada(
-    onEnviarMensagem: (Mensagem) -> Unit
+    carregandoMsg: Boolean,
+    onEnviarMsg: (Mensagem) -> Unit
 ) {
     // Campos de texto e imagem
     var texto by remember { mutableStateOf("") }
@@ -257,11 +263,11 @@ fun ChatEntrada(
                 Spacer(modifier = Modifier.width(8.dp))
 
                 // Botão com feedback visual (enable/disable)
-                val podeEnviar = texto.isNotBlank() || imgs.isNotEmpty()
+                val podeEnviar = texto.isNotBlank() || imgs.isNotEmpty() && !carregandoMsg
                 IconButton(
                     onClick = {
                         if (podeEnviar) {
-                            onEnviarMensagem(
+                            onEnviarMsg(
                                 Mensagem(
                                     texto = texto,
                                     imgUrls = imgs
@@ -280,11 +286,14 @@ fun ChatEntrada(
                         disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Send,
-                        contentDescription = stringResource(R.string.enviar),
-                        modifier = Modifier.size(24.dp)
-                    )
+                    if (carregandoMsg) AnimacaoCarregando()
+                    else {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Send,
+                            contentDescription = stringResource(R.string.enviar),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 }
             }
         }
@@ -296,23 +305,25 @@ fun ChatEntrada(
 fun ChatPreview() {
     MapaTheme {
         Chat(
-            msgs = listOf(
-                Mensagem(
-                    id = "1",
-                    texto = "Olá, tudo bem?",
-                    remetenteUid = "123",
-                    destinatarioUid = "456",
-                    timestamp = System.currentTimeMillis()
-                )
+            chatState = ChatUiState(
+                msgs = listOf(
+                    Mensagem(
+                        id = "1",
+                        texto = "Olá, tudo bem?",
+                        remetenteUid = "123",
+                        destinatarioUid = "456",
+                        timestamp = System.currentTimeMillis()
+                    )
+                ),
+                destinatario = Usuario(
+                    uid = "456",
+                    nome = "João",
+                    email = "james.francis.byrnes@example-pet-store.com",
+                    foto = "https://img.freepik.com/vetores-gratis/ilustracao-do-jovem-sorridente_1308-174669.jpg"
+                ),
+                carregando = false,
             ),
-            remetenteUid = "123",
-            destinatario = Usuario(
-                uid = "456",
-                nome = "João",
-                email = "james.francis.byrnes@example-pet-store.com",
-                foto = "https://img.freepik.com/vetores-gratis/ilustracao-do-jovem-sorridente_1308-174669.jpg"
-            ),
-            carregando = false,
+            carregandoMsg = false,
             onVoltar = {},
             onEnviarMsg = {},
             onEditarMsg = { _, _ -> },

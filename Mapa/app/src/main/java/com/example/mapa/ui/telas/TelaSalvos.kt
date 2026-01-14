@@ -97,12 +97,12 @@ fun Salvos(
     // Estados de UI locais (controles de diálogo, edição, etc)
     var localSelecionado by rememberSaveable { mutableStateOf<Local?>(null) }
     var editando by rememberSaveable { mutableStateOf(false) }
-    var excluirDialog by rememberSaveable { mutableStateOf(false) }
+    var mostrarDialogExcluir by rememberSaveable { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // Diálogo de confirmação de exclusão
     DialogExcluir(
-        visivel = excluirDialog && localSelecionado != null,
+        visivel = mostrarDialogExcluir && localSelecionado != null,
         titulo = stringResource(R.string.excluir_local),
         mensagem = stringResource(
             R.string.tem_certeza_que_deseja_excluir_essa_acao_nao_pode_ser_desfeita,
@@ -110,11 +110,11 @@ fun Salvos(
         ),
         onConfirmar = {
             localSelecionado?.let { onRemoverLocal(it.id) }
-            excluirDialog = false
+            mostrarDialogExcluir = false
             localSelecionado = null
         },
         onCancelar = {
-            excluirDialog = false
+            mostrarDialogExcluir = false
             localSelecionado = null
         }
     )
@@ -158,7 +158,7 @@ fun Salvos(
                         },
                         onExcluirClick = {
                             localSelecionado = local
-                            excluirDialog = true
+                            mostrarDialogExcluir = true
                         }
                     )
                 }

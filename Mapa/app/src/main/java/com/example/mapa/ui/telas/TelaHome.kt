@@ -135,7 +135,7 @@ fun Home(
     var localMarcado by rememberSaveable { mutableStateOf<LatLng?>(null) }
     var localSelecionado by rememberSaveable { mutableStateOf<Local?>(null) }
     var raio by rememberSaveable { mutableDoubleStateOf(50.0) }
-    var excluirDialog by rememberSaveable { mutableStateOf(false) }
+    var mostrarDialogExcluir by rememberSaveable { mutableStateOf(false) }
     var editando by rememberSaveable { mutableStateOf(false) }
 
     // Estado de visibilidade do BottomSheet
@@ -164,7 +164,7 @@ fun Home(
 
     // Diálogo de confirmação de exclusão
     DialogExcluir(
-        visivel = excluirDialog && localSelecionado != null,
+        visivel = mostrarDialogExcluir && localSelecionado != null,
         titulo = stringResource(R.string.excluir_local),
         mensagem = stringResource(
             R.string.tem_certeza_que_deseja_excluir_essa_acao_nao_pode_ser_desfeita,
@@ -172,10 +172,10 @@ fun Home(
         ),
         onConfirmar = {
             localSelecionado?.let { onRemoverLocal(it.id) }
-            excluirDialog = false
+            mostrarDialogExcluir = false
             localSelecionado = null
         },
-        onCancelar = { excluirDialog = false }
+        onCancelar = { mostrarDialogExcluir = false }
     )
 
     BottomSheetScaffold(
@@ -229,7 +229,7 @@ fun Home(
                             local = localSelecionado!!,
                             usuarioUid = usuario?.uid,
                             onFechar = { localSelecionado = null },
-                            onExcluir = { excluirDialog = true },
+                            onExcluir = { mostrarDialogExcluir = true },
                             onEditar = {
                                 raio = localSelecionado!!.raio
                                 editando = true

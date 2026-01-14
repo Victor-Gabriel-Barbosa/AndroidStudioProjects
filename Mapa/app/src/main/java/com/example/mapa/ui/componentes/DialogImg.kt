@@ -23,7 +23,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -37,7 +36,11 @@ import com.example.mapa.R
 import com.example.mapa.ui.theme.MapaTheme
 
 /**
- * Diálogo de zoom de imagem
+ * Composable que exibe um diálogo de imagem em tela cheia com suporte a gestos de zoom e pan.
+ *
+ * @param img URL ou caminho da imagem a ser exibida. Se for nulo ou estiver em branco, o diálogo não é exibido.
+ * @param onFechar Callback invocado quando o diálogo deve ser fechado.
+ * @param modifier [Modifier] a ser aplicado ao Surface do diálogo.
  */
 @Composable
 fun DialogImg(
@@ -101,12 +104,12 @@ fun DialogImg(
                         .align(Alignment.TopEnd)
                         .padding(16.dp)
                         .padding(top = 24.dp)
-                        .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                        .background(MaterialTheme.colorScheme.surface, CircleShape)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = stringResource(R.string.fechar),
-                        tint = Color.White
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -114,9 +117,12 @@ fun DialogImg(
     }
 }
 
+/**
+ * Preview do componente [DialogImg].
+ */
 @Preview
 @Composable
-private fun FormLocalPreview() {
+private fun DialogImgPreview() {
     MapaTheme {
         DialogImg(
             img = "https://4kwallpapers.com/images/walls/thumbs_3t/24938.jpg",

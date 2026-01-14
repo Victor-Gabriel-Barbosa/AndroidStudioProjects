@@ -12,7 +12,11 @@ import androidx.compose.ui.unit.dp
 import com.example.mapa.ui.theme.MapaTheme
 
 /**
- * Sobreposição de circulo de pregresso de carregamento
+ * Exibe uma sobreposição de carregamento em tela cheia.
+ *
+ * Este composable é usado para indicar que uma operação está em andamento,
+ * bloqueando a interação do usuário com a interface subjacente. A sobreposição
+ * preenche toda a tela e exibe uma animação de carregamento no centro.
  */
 @Composable
 fun OverlayCarregando() {
@@ -23,12 +27,15 @@ fun OverlayCarregando() {
         contentAlignment = Alignment.Center
     ) {
         AnimacaoCarregando(
-            size = 100.dp,
+            size = 60.dp,
             strokeWidth = 8.dp
         )
     }
 }
 
+/**
+ * Preview para o [OverlayCarregando].
+ */
 @Preview(showBackground = true)
 @Composable
 private fun OverlayCarregandoPreview() {

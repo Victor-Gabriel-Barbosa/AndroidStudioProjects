@@ -36,6 +36,7 @@ firebaseAnalytics = "23.0.0"
 firebasePerf = "22.0.4"
 googleFirebaseFirebasePerf = "2.0.2"
 firebaseFunctions = "22.1.0"
+foundationLayout = "1.10.0"
 
 [libraries]
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanistPermissions" }
@@ -79,6 +80,7 @@ androidx-compose-ui-text = { group = "androidx.compose.ui", name = "ui-text", ve
 firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics", version.ref = "firebaseAnalytics" }
 firebase-perf = { group = "com.google.firebase", name = "firebase-perf", version.ref = "firebasePerf" }
 firebase-functions = { group = "com.google.firebase", name = "firebase-functions", version.ref = "firebaseFunctions" }
+androidx-compose-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayout" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
