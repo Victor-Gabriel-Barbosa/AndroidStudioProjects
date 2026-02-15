@@ -27,7 +27,7 @@ import com.example.mapa.ui.theme.MapaTheme
 @Composable
 fun AnimacaoCarregando(
     modifier: Modifier = Modifier,
-    size: Dp = 36.dp,
+    size: Dp = 32.dp,
     color: Color = MaterialTheme.colorScheme.tertiary,
     strokeWidth: Dp = 4.dp,
     trackColor: Color = Color.Transparent

@@ -10,8 +10,7 @@ import kotlinx.parcelize.Parcelize
 data class Mensagem (
     val id: String = "",
     val texto: String = "",
-    val remetenteUid: String = "",
-    val destinatarioUid: String = "",
+    val autorUid: String = "",
     val lido: Boolean = false,
     val editado: Boolean = false,
     val imgUrls: List<String> = emptyList(),

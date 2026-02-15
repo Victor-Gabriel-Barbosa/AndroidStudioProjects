@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddAPhoto
@@ -29,6 +30,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -42,6 +44,7 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -51,10 +54,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.mapa.R
-import com.example.mapa.models.Local
+import com.example.mapa.data.remote.dto.Local
+import com.example.mapa.models.TipoLocal
 import com.example.mapa.ui.theme.MapaTheme
 import com.example.mapa.utils.criarUriParaFoto
 import java.text.SimpleDateFormat
@@ -94,8 +99,9 @@ fun FormLocal(
 
     // Variáveis de estado para os campos do formulário
     var nome by rememberSaveable { mutableStateOf(localInicial.nome) }
-    var tipoSelecionado by rememberSaveable { mutableStateOf(localInicial.tipo) }
+    var tipoSelecionado by rememberSaveable { mutableStateOf(TipoLocal.fromId(localInicial.tipo)) }
     var descricao by rememberSaveable { mutableStateOf(localInicial.descricao) }
+    var raio by rememberSaveable { mutableDoubleStateOf(localInicial.raio) }
     var imgs by rememberSaveable { mutableStateOf(localInicial.imgUrls) }
     var uriTemp by rememberSaveable { mutableStateOf<Uri?>(null) }
 
@@ -105,6 +111,7 @@ fun FormLocal(
     )
     var datePicker by rememberSaveable { mutableStateOf(false) }
 
+    // Data formatada para exibição
     val data = rememberSaveable(datePickerState.selectedDateMillis) {
         datePickerState.selectedDateMillis?.let { millis ->
             val formatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
@@ -157,47 +164,55 @@ fun FormLocal(
     }
 
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
-            .padding(bottom = 24.dp),
+        modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Cabeçalho com título e botão de fechar
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = titulo,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.align(Alignment.Center)
+            )
+
+            IconButton(
+                onClick = onFechar,
+                modifier = Modifier.align(Alignment.CenterEnd)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = stringResource(R.string.fechar)
+                )
+            }
+        }
+
+        HorizontalDivider()
+
         Column(
-            modifier = Modifier.padding(horizontal = 20.dp),
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(top = 4.dp, bottom = 24.dp)
+                .padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Cabeçalho com título e botão de fechar
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = titulo,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                )
-
-                IconButton(
-                    onClick = onFechar,
-                    modifier = Modifier.align(Alignment.CenterEnd)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = stringResource(R.string.fechar)
-                    )
-                }
-            }
-
             // Campo de nome
             OutlinedTextField(
                 value = nome,
                 onValueChange = { nome = it },
-                label = { Text(stringResource(R.string.nome)) },
+                label = { Text(stringResource(R.string.nome) + '*') },
                 shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences
+                )
             )
 
             // Campo de tipo
@@ -207,14 +222,14 @@ fun FormLocal(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 OutlinedTextField(
-                    value = tipoSelecionado,
+                    value = stringResource(tipoSelecionado.texto),
                     onValueChange = {},
                     readOnly = true,
                     label = { Text(stringResource(R.string.tipo)) },
                     placeholder = { Text(stringResource(R.string.selecione_uma_opcao)) },
                     trailingIcon = {
                         ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandido)
-                   },
+                    },
                     colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                     shape = MaterialTheme.shapes.medium,
                     modifier = Modifier
@@ -229,11 +244,11 @@ fun FormLocal(
                     expanded = expandido,
                     onDismissRequest = { expandido = false }
                 ) {
-                    listOf(stringResource(R.string.perdido), stringResource(R.string.encontrado)).forEach { selecionado ->
+                    TipoLocal.entries.forEach { opcao ->
                         DropdownMenuItem(
-                            text = { Text(text = selecionado) },
+                            text = { Text(text = stringResource(opcao.texto)) },
                             onClick = {
-                                tipoSelecionado = selecionado
+                                tipoSelecionado = opcao
                                 expandido = false
                             },
                             contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
@@ -251,7 +266,10 @@ fun FormLocal(
                 readOnly = true,
                 trailingIcon = {
                     IconButton(onClick = { datePicker = true }) {
-                        Icon(Icons.Default.DateRange, contentDescription = "Selecionar data")
+                        Icon(
+                            Icons.Default.DateRange,
+                            contentDescription = stringResource(R.string.selecionar_data)
+                        )
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
@@ -269,11 +287,14 @@ fun FormLocal(
             OutlinedTextField(
                 value = descricao,
                 onValueChange = { descricao = it },
-                label = { Text(stringResource(R.string.descricao)) },
+                label = { Text(stringResource(R.string.descricao_reticencias)) },
                 shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3,
-                maxLines = 5
+                maxLines = 5,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences
+                )
             )
 
             // Slider de raio
@@ -290,21 +311,26 @@ fun FormLocal(
                         text = stringResource(R.string.raio_de_busca),
                         style = MaterialTheme.typography.bodyMedium,
                     )
+
                     Surface(
                         shape = MaterialTheme.shapes.small,
                         color = MaterialTheme.colorScheme.primaryContainer
                     ) {
                         Text(
-                            text = stringResource(R.string.metros, localInicial.raio.toInt()),
+                            text = stringResource(R.string.metros, raio.toInt()),
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
                 }
+
                 Slider(
-                    value = localInicial.raio.toFloat(),
-                    onValueChange = { onRaioChange(it.toDouble()) },
+                    value = raio.toFloat(),
+                    onValueChange = {
+                        raio = it.toDouble()
+                        onRaioChange(it.toDouble())
+                    },
                     valueRange = 50f..500f
                 )
             }
@@ -382,9 +408,10 @@ fun FormLocal(
                         onSalvar(
                             localInicial.copy(
                                 nome = nome,
-                                tipo = tipoSelecionado,
+                                tipo = tipoSelecionado.id,
                                 data = datePickerState.selectedDateMillis?.let { Date(it) },
                                 descricao = descricao,
+                                raio = raio,
                                 imgUrls = imgs
                             )
                         )

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Mapa</string>
+    <string name="app_name">Echo</string>
     <string name="inicio">Início</string>
     <string name="perdidos">Perdidos</string>
     <string name="mensagens">Mensagens</string>
@@ -14,7 +14,7 @@
     <string name="adicionar_imagem">Adicionar imagem</string>
     <string name="adicionar_foto">Adicionar foto</string>
     <string name="raio_de_busca">Raio de busca</string>
-    <string name="adicionar_novo_local">Adicionar novo local</string>
+    <string name="adicionar_novo_local">Adicionar Novo Local</string>
     <string name="local_perdido">Local Perdido</string>
     <string name="foto_de_perfil">Foto de perfil</string>
     <string name="foto_de_perfil_padrao">Foto de perfil padrão</string>
@@ -42,7 +42,7 @@
     <string name="conversar">Conversar</string>
     <string name="editar_local">Editar Local</string>
     <string name="excluir_local">Excluir Local</string>
-    <string name="tem_certeza_que_deseja_excluir_essa_acao_nao_pode_ser_desfeita">Tem certeza que deseja excluir \'%1$s\'? Essa ação não pode ser desfeita</string>
+    <string name="tem_certeza_que_deseja_excluir_essa_acao_nao_pode_ser_desfeita">Tem certeza que deseja excluir <b>\'%1$s\'?</b> Essa ação não pode ser desfeita</string>
     <string name="sim_excluir">Sim, excluir</string>
     <string name="mensagem">Mensagem...</string>
     <string name="enviar">Enviar</string>
@@ -89,4 +89,13 @@
     <string name="nenhuma_conversa_encontrada">Nenhuma conversa encontrada</string>
     <string name="alterar_foto">Alterar foto</string>
     <string name="tirar_foto">Tirar foto</string>
+    <string name="selecionar_data">Selecionar data</string>
+    <string name="adicionar_imagens">Adicionar imagens</string>
+    <string name="sim">Sim</string>
+    <string name="tem_certeza_que_deseja_sair">Tem certeza que deseja sair?</string>
+    <string name="sair">Sair</string>
+    <string name="sair_pergunta">Sair?</string>
+    <string name="descricao_reticencias">Descrição...</string>
+    <string name="ir_para_o_fim">Ir para o fim</string>
+    <string name="usuario_sem_foto">Usuário sem foto</string>
 </resources>

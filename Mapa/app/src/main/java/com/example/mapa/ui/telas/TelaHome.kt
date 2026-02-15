@@ -2,9 +2,14 @@ package com.example.mapa.ui.telas
 
 import android.annotation.SuppressLint
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,13 +34,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.mapa.R
-import com.example.mapa.models.Local
-import com.example.mapa.models.Usuario
-import com.example.mapa.ui.componentes.OverlayCarregando
+import com.example.mapa.data.remote.dto.Local
+import com.example.mapa.models.LocalState
+import com.example.mapa.data.remote.dto.Usuario
 import com.example.mapa.ui.componentes.DialogExcluir
 import com.example.mapa.ui.componentes.FormLocal
 import com.example.mapa.ui.componentes.Header
 import com.example.mapa.ui.componentes.InfoLocal
+import com.example.mapa.ui.componentes.OverlayCarregando
 import com.example.mapa.ui.theme.MapaTheme
 import com.example.mapa.viewmodels.LocalViewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -64,8 +70,7 @@ fun TelaHome(
     val context = LocalContext.current
 
     // Variáveis de estado para o mapa
-    val locaisMarcados by localViewModel.locais.collectAsStateWithLifecycle()
-    val carregando by localViewModel.carregando.collectAsStateWithLifecycle()
+    val uiState by localViewModel.uiState.collectAsStateWithLifecycle()
     val cameraPositionState = rememberCameraPositionState()
 
     // Lista de estados das permissões de localização
@@ -102,11 +107,10 @@ fun TelaHome(
         }
     }
 
-    Home(
+    TelaHomeContent(
         modifier = modifier,
         usuario = usuario,
-        locaisMarcados = locaisMarcados,
-        carregando = carregando,
+        localState = uiState,
         cameraPositionState = cameraPositionState,
         permissaoLocalizacao = locationPermissionState.allPermissionsGranted,
         onAdicionarLocal = { localViewModel.adicionarLocal(it) },
@@ -118,11 +122,10 @@ fun TelaHome(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Home(
+fun TelaHomeContent(
     modifier: Modifier = Modifier,
     usuario: Usuario?,
-    locaisMarcados: List<Local>,
-    carregando: Boolean,
+    localState: LocalState,
     cameraPositionState: CameraPositionState,
     permissaoLocalizacao: Boolean,
     onAdicionarLocal: (Local) -> Unit,
@@ -183,15 +186,29 @@ fun Home(
         sheetPeekHeight = 100.dp,
         sheetContainerColor = MaterialTheme.colorScheme.surface,
         sheetContentColor = MaterialTheme.colorScheme.onSurface,
-        sheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        sheetShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
         sheetShadowElevation = 8.dp,
         sheetTonalElevation = 2.dp,
+        sheetDragHandle = {
+            Box(
+                modifier = Modifier
+                    .padding(top = 8.dp, bottom = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(40.dp)
+                        .height(4.dp)
+                        .background(MaterialTheme.colorScheme.onSurface, CircleShape)
+                )
+            }
+        },
         sheetContent = {
             when {
                 localMarcado != null -> {
                     FormLocal(
                         titulo = stringResource(R.string.adicionar_novo_local),
-                        carregando = carregando,
+                        carregando = localState.carregando,
                         localInicial = Local(
                             uid = usuario?.uid ?: "",
                             latitude = localMarcado!!.latitude,
@@ -212,7 +229,7 @@ fun Home(
                         FormLocal(
                             titulo = stringResource(R.string.editar_local),
                             localInicial = localSelecionado!!,
-                            carregando = carregando,
+                            carregando = localState.carregando,
                             onRaioChange = { raio = it },
                             onSalvar = { local ->
                                 onEditarLocal(local)
@@ -248,7 +265,7 @@ fun Home(
                 onMapLoaded = { mapaCarregando = false },
                 properties = MapProperties(isMyLocationEnabled = permissaoLocalizacao),
                 onMapLongClick = {
-                    if (!carregando && !mapaCarregando) {
+                    if (!localState.carregando && !mapaCarregando) {
                         localMarcado = it
                         localSelecionado = null
                     }
@@ -256,11 +273,11 @@ fun Home(
                 contentPadding = if (sheetVisivel) innerPadding else PaddingValues()
             ) {
                 // Renderiza locais existentes
-                locaisMarcados.forEach { local ->
+                localState.locais.forEach { local ->
                     val posi = LatLng(local.latitude, local.longitude)
                     val corIcone = if (local.tipo == stringResource(R.string.perdido)) BitmapDescriptorFactory.HUE_RED else BitmapDescriptorFactory.HUE_GREEN
                     val corCirculo = if (local.tipo == stringResource(R.string.perdido)) Color(0x22FF0000) else Color(0x220066FF)
-                    val corBorda = if (local.tipo == stringResource(R.string.perdido)) Color.Red else Color.Blue
+                    val corBorda = if (local.tipo == stringResource(R.string.perdido)) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
 
                     Marker(
                         state = MarkerState(posi),
@@ -293,7 +310,7 @@ fun Home(
                         center = it,
                         radius = raio,
                         fillColor = Color(0x330066FF),
-                        strokeColor = Color.Blue,
+                        strokeColor = MaterialTheme.colorScheme.primary,
                         strokeWidth = 4f
                     )
                 }
@@ -313,21 +330,23 @@ fun Home(
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
-fun HomePreview() {
+fun TelaHomeContentPreview() {
     MapaTheme {
-        Home(
+        TelaHomeContent(
             usuario = Usuario(uid = "123", nome = "Teste", email = "teste@email.com"),
-            locaisMarcados = listOf(
-                Local(
-                    id = "1",
-                    latitude = -23.550520,
-                    longitude = -46.633308,
-                    nome = "Chave Perdida",
-                    descricao = "Perdi perto da praça",
-                    raio = 50.0
-                )
+            localState = LocalState(
+                locais = listOf(
+                    Local(
+                        id = "1",
+                        latitude = -23.550520,
+                        longitude = -46.633308,
+                        nome = "Chave Perdida",
+                        descricao = "Perdi perto da praça",
+                        raio = 50.0
+                    )
+                ),
+                carregando = false
             ),
-            carregando = false,
             cameraPositionState = rememberCameraPositionState {
                 position = CameraPosition.fromLatLngZoom(LatLng(-23.55, -46.63), 15f)
             },

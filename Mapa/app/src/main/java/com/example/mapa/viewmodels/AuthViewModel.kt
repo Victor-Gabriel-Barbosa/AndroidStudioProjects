@@ -1,36 +1,32 @@
 package com.example.mapa.viewmodels
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.mapa.data.local.mapper.toDomain
 import com.example.mapa.models.LoginState
 import com.google.firebase.auth.AuthCredential
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import com.example.mapa.repositories.AuthRepo
-import com.example.mapa.models.Usuario
-import com.example.mapa.repositories.UsuarioRepo
+import com.example.mapa.data.remote.AuthRepository
+import com.example.mapa.models.UsuarioState
+import com.example.mapa.data.repository.UsuarioRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
 
 /**
  * ViewModel para gerenciar a autenticação do usuário, incluindo login, cadastro e logout.
  *
- * @property authRepo Repositório para operações de autenticação com Firebase.
+ * @property authRepository Repositório para operações de autenticação com Firebase.
  * @property usuarioRepo Repositório para operações de dados do usuário no Firestore.
  */
 class AuthViewModel(
-    private val authRepo: AuthRepo,
-    private val usuarioRepo: UsuarioRepo
+    private val authRepository: AuthRepository,
+    private val usuarioRepo: UsuarioRepository
 ) : ViewModel() {
     /**
      * Estado que representa o processo de login/cadastro.
@@ -39,37 +35,35 @@ class AuthViewModel(
     val loginState: StateFlow<LoginState> = _loginState.asStateFlow()
 
     /**
-     * Estado que indica se a foto de perfil está sendo carregada/atualizada.
+     * Estados que indicam se a foto de perfil ou o nome do usuário estão sendo carregados/atualizados.
      */
     private val _carregandoFoto = MutableStateFlow(false)
-    val carregandoFoto: StateFlow<Boolean> = _carregandoFoto.asStateFlow()
+    private val _carregandoNome = MutableStateFlow(false)
 
     /**
      * `Flow` que emite o estado do usuário ativo, combinando dados do Firebase Auth e Firestore.
      * Retorna `null` se não houver usuário logado.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    val usuarioAtivoState: Flow<Usuario?> = authRepo.usuarioState
-        .flatMapLatest { usuario ->
-            if (usuario?.uid != null) usuarioRepo.findByUid(usuario.uid).map { it.firstOrNull() ?: usuario }
-            else flowOf(null)
-        }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = null
-        )
+    val uiState: StateFlow<UsuarioState> = combine(
+        usuarioRepo.usuario,
+        authRepository.usuarioState,
+        _carregandoFoto,
+        _carregandoNome
+    ) { usuarioLocalEntity, usuarioAuth, carregandoFoto, carregandoNome ->
+        val usuarioParaExibir = usuarioLocalEntity?.toDomain() ?: usuarioAuth
 
-    /**
-     * `StateFlow` que indica se há um usuário logado no Firebase Auth.
-     * `true` se logado, `false` se deslogado, `null` durante a inicialização.
-     */
-    val usuarioAtivoLogado: StateFlow<Boolean?> = authRepo.usuarioLogado
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = null
+        UsuarioState(
+            usuario = usuarioParaExibir,
+            logado = usuarioAuth != null,
+            carregandoFoto = carregandoFoto,
+            carregandoNome = carregandoNome
         )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = UsuarioState(logado = null)
+    )
 
     /**
      * Tenta realizar o login do usuário com e-mail e senha.
@@ -82,11 +76,12 @@ class AuthViewModel(
         viewModelScope.launch {
             _loginState.value = LoginState.Carregando
 
-            authRepo.signInWithEmail(email, senha)
-                .onSuccess { _loginState.value = LoginState.Sucesso }
-                .onFailure {
-                    Log.e("AuthViewModel", "login: ${it.message}")
-                    _loginState.value = LoginState.Erro(it.message ?: "Erro ao fazer login")
+            authRepository.signInWithEmail(email, senha)
+                .onSuccess {
+                    _loginState.value = LoginState.Sucesso
+                }
+                .onFailure { error ->
+                    _loginState.value = LoginState.Erro(error.message ?: "Erro no login")
                 }
         }
     }
@@ -103,21 +98,14 @@ class AuthViewModel(
         viewModelScope.launch {
             _loginState.value = LoginState.Carregando
 
-            authRepo.signUpWithEmail(email, senha)
+            authRepository.signUpWithEmail(email, senha)
                 .onSuccess {
-                    try {
-                        val novoUsuario = authRepo.usuarioState.filterNotNull().first()
-                        val res = usuarioRepo.save(novoUsuario)
-                        if (res.isSuccess) _loginState.value = LoginState.Sucesso
-                        else _loginState.value = LoginState.Erro("Conta criada, mas erro ao salvar dados")
-                    } catch (e: Exception) {
-                        Log.e("AuthViewModel", "cadastrar: ${e.message}")
-                        _loginState.value = LoginState.Erro("Erro ao vincular dados do usuário: ${e.message}")
-                    }
+                    val usuarioAtual = authRepository.usuarioState.first()
+                    if (usuarioAtual != null) usuarioRepo.updateUsuario(usuarioAtual.copy(email = email))
+                    _loginState.value = LoginState.Sucesso
                 }
-                .onFailure {
-                    Log.e("AuthViewModel", "cadastrar: ${it.message}")
-                    _loginState.value = LoginState.Erro(it.message ?: "Erro ao cadastrar")
+                .onFailure { error ->
+                    _loginState.value = LoginState.Erro(error.message ?: "Erro no cadastro")
                 }
         }
     }
@@ -132,21 +120,14 @@ class AuthViewModel(
     fun loginWithGoogle(credential: AuthCredential) {
         viewModelScope.launch {
             _loginState.value = LoginState.Carregando
-
-            authRepo.signInWithGoogle(credential)
+            authRepository.signInWithGoogle(credential)
                 .onSuccess {
-                    try {
-                        val usuarioGoogle = authRepo.usuarioState.filterNotNull().first()
-                        usuarioRepo.save(usuarioGoogle)
-                        _loginState.value = LoginState.Sucesso
-                    } catch (e: Exception) {
-                        Log.e("AuthViewModel", "loginWithGoogle: ${e.message}")
-                        _loginState.value = LoginState.Erro("Erro ao processar dados do Google: ${e.message}")
-                    }
+                    val usuarioAuth = authRepository.usuarioState.first()
+                    if (usuarioAuth != null) usuarioRepo.updateUsuario(usuarioAuth)
+                    _loginState.value = LoginState.Sucesso
                 }
-                .onFailure {
-                    Log.e("AuthViewModel", "loginWithGoogle: ${it.message}")
-                    _loginState.value = LoginState.Erro(it.message ?: "Erro Google Login")
+                .onFailure { error ->
+                    _loginState.value = LoginState.Erro(error.message ?: "Erro Google")
                 }
         }
     }
@@ -155,7 +136,7 @@ class AuthViewModel(
      * Realiza o logout do usuário atual e reseta o estado de login.
      */
     fun logout() {
-        authRepo.signOut()
+        authRepository.signOut()
         _loginState.value = LoginState.Parado
     }
 
@@ -165,18 +146,12 @@ class AuthViewModel(
      * @param foto A nova URL da foto de perfil.
      */
     fun atualizarFoto(foto: String) {
+        val usuarioAtual = uiState.value.usuario ?: return
+
         viewModelScope.launch {
-            try {
-                _carregandoFoto.value = true
-                val usuario = authRepo.usuarioState.filterNotNull().first()
-                usuarioRepo.updateByUid(usuario.uid, usuario.copy(foto = foto))
-                _carregandoFoto.value = false
-            } catch (e: Exception) {
-                Log.e("AuthViewModel", "atualizarFoto: ${e.message}")
-                _loginState.value = LoginState.Erro("Erro ao atualizar foto: ${e.message}")
-            } finally {
-                _carregandoFoto.value = false
-            }
+            _carregandoFoto.value = true
+            usuarioRepo.updateUsuario(usuarioAtual.copy(foto = foto))
+            _carregandoFoto.value = false
         }
     }
 
@@ -186,16 +161,12 @@ class AuthViewModel(
      * @param nome O novo nome do usuário.
      */
     fun atualizarNome(nome: String) {
+        val usuarioAtual = uiState.value.usuario ?: return
+
         viewModelScope.launch {
-            try {
-                _carregandoFoto.value = true
-                val usuario = authRepo.usuarioState.filterNotNull().first()
-                usuarioRepo.updateByUid(usuario.uid, usuario.copy(nome = nome))
-                _carregandoFoto.value = false
-            } catch (e: Exception) {
-                Log.e("AuthViewModel", "atualizarNome: ${e.message}")
-                _loginState.value = LoginState.Erro("Erro ao atualizar nome: ${e.message}")
-            }
+            _carregandoNome.value = true
+            usuarioRepo.updateUsuario(usuarioAtual.copy(nome = nome))
+            _carregandoNome.value = false
         }
     }
 

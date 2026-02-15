@@ -129,3 +129,47 @@ exports.atualizarResumoChat = onDocumentWritten("chats/{salaId}/mensagens/{mensa
         logger.error(`Erro ao atualizar resumo do chat ${salaId}:`, erro);
     }
 });
+
+exports.limparChatOculto = onDocumentWritten("chats/{salaId}", async (event) => {
+    // Se o documento foi deletado, não faz nada
+    if (!event.data.after.exists) return;
+
+    const dadosAntigos = event.data.before.data() || {};
+    const dadosNovos = event.data.after.data() || {};
+
+
+    if (participantes.length > 0) return;
+
+    const visivelPara = dadosNovos.visivelPara;
+
+    // Se ainda houver participantes, encerra
+    if (!visivelPara || visivelPara.length > 0) return;
+
+    const salaId = event.params.salaId;
+    logger.info(`Chat ${salaId} oculto para todos. Iniciando exclusão definitiva.`);
+
+    const db = admin.firestore();
+    const chatRef = db.collection("chats").doc(salaId);
+    const mensagensRef = chatRef.collection("mensagens");
+
+    try {
+        // Deleta subcoleção de mensagens (em batches)
+        const snapshot = await mensagensRef.limit(500).get();
+
+        if (!snapshot.empty) {
+            const batch = db.batch();
+            snapshot.docs.forEach((doc) => {
+                batch.delete(doc.ref);
+            });
+            await batch.commit();
+
+            logger.info(`Mensagens do chat ${salaId} deletadas.`);
+        }
+
+        // Deleta o documento do Chat
+        await chatRef.delete();
+        logger.info(`Documento do chat ${salaId} deletado permanentemente.`);
+    } catch (erro) {
+        logger.error(`Erro ao deletar chat oculto ${salaId}:`, erro);
+    }
+});

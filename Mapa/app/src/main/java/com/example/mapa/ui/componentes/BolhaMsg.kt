@@ -51,21 +51,21 @@ import java.util.Locale
  * Suporta mensagens de texto, imagens, indicadores de leitura e menu de opções (editar/excluir).
  *
  * @param msg O objeto [Mensagem] contendo os dados da mensagem a ser exibida.
- * @param remetente Indica se a mensagem foi enviada pelo usuário atual (alinha à direita e mostra opções).
+ * @param autor Indica se a mensagem foi enviada pelo usuário atual (alinha à direita e mostra opções).
  * @param onEditar Callback invocado quando o usuário confirma a edição da mensagem.
  * @param onExcluir Callback invocado quando o usuário confirma a exclusão da mensagem.
  */
 @Composable
 fun BolhaMsg(
     msg: Mensagem,
-    remetente: Boolean,
+    autor: Boolean,
     onEditar: (String, Mensagem) -> Unit,
     onExcluir: (String) -> Unit
 ) {
     // Cores e alinhamento da mensagem
-    val corCaixa = if (remetente) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
-    val corTexto = if (remetente) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-    val alignment = if (remetente) Alignment.End else Alignment.Start
+    val corBolha = if (autor) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+    val corTexto = if (autor) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+    val alignment = if (autor) Alignment.End else Alignment.Start
 
     // Estado para controlar a visibilidade do menu
     var expandido by rememberSaveable { mutableStateOf(false) }
@@ -79,7 +79,7 @@ fun BolhaMsg(
     )
 
     // Forma arredondada da mensagem
-    val shape = if (remetente) RoundedCornerShape(16.dp, 16.dp, 2.dp, 16.dp)
+    val shape = if (autor) RoundedCornerShape(16.dp, 16.dp, 2.dp, 16.dp)
     else RoundedCornerShape(16.dp, 16.dp, 16.dp, 2.dp)
 
     Column(
@@ -87,13 +87,13 @@ fun BolhaMsg(
         horizontalAlignment = alignment
     ) {
         Surface(
-            color = corCaixa,
+            color = corBolha,
             shape = shape,
             modifier = Modifier.padding(vertical = 2.dp)
         ) {
             Box(modifier = Modifier.padding(10.dp)) {
                 Column(
-                    modifier = Modifier.padding(end = if (remetente) 20.dp else 0.dp)
+                    modifier = Modifier.padding(end = if (autor) 20.dp else 0.dp)
                 ) {
                     msg.imgUrls.forEach {
                         AsyncImage(
@@ -137,7 +137,7 @@ fun BolhaMsg(
                             style = MaterialTheme.typography.labelSmall
                         )
 
-                        if (remetente) {
+                        if (autor) {
                             Spacer(Modifier.width(4.dp))
                             Icon(
                                 imageVector = if (msg.lido) Icons.Default.DoneAll else Icons.Default.Done,
@@ -150,7 +150,7 @@ fun BolhaMsg(
                 }
 
                 // Lógica do Menu (Apenas se for o usuário ativo)
-                if (remetente) {
+                if (autor) {
                     Box(modifier = Modifier.align(Alignment.TopEnd)) {
                         IconButton(
                             onClick = { expandido = true },
@@ -229,12 +229,11 @@ fun BolhaMsgPreview() {
                 msg = Mensagem(
                     id = "1",
                     texto = "Olá, tudo bem?",
-                    remetenteUid = "123",
-                    destinatarioUid = "456",
+                    autorUid = "123",
                     lido = true,
                     timestamp = System.currentTimeMillis()
                 ),
-                remetente = true,
+                autor = true,
                 onEditar = { _, _ -> },
                 onExcluir = { }
             )
@@ -245,12 +244,11 @@ fun BolhaMsgPreview() {
                 msg = Mensagem(
                     id = "2",
                     texto = "Perfeito e vc?",
-                    remetenteUid = "456",
-                    destinatarioUid = "123",
+                    autorUid = "456",
                     lido = true,
                     timestamp = System.currentTimeMillis()
                 ),
-                remetente = false,
+                autor = false,
                 onEditar = { _, _ -> },
                 onExcluir = { }
             )

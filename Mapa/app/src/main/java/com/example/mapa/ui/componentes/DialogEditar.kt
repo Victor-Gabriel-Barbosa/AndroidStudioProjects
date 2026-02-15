@@ -22,13 +22,13 @@ import com.example.mapa.ui.theme.MapaTheme
  */
 @Composable
 fun DialogEditar(
-    visivel: Boolean,
-    textoInicial: String,
-    titulo: String,
-    label: String,
+    modifier: Modifier = Modifier,
+    visivel: Boolean = false,
+    textoInicial: String = "",
+    titulo: String = "",
+    label: String = "",
     onFechar: () -> Unit,
     onConfirmar: (String) -> Unit,
-    modifier: Modifier = Modifier,
     textoConfirmar: String = stringResource(R.string.salvar),
     textoCancelar: String = stringResource(R.string.cancelar),
 ) {

@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Aula 18</string>
+    <string name="lista_de_compras">Lista de Compras</string>
+    <string name="limpar_lista">Limpar Lista</string>
+    <string name="inserir">Inserir</string>
+    <string name="item">Item</string>
+</resources>

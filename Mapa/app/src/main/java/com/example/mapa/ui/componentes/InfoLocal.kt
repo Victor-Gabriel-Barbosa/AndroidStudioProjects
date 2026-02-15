@@ -29,6 +29,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -40,7 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.mapa.R
-import com.example.mapa.models.Local
+import com.example.mapa.data.remote.dto.Local
 import com.example.mapa.ui.theme.MapaTheme
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -64,168 +65,163 @@ import java.util.Locale
  */
 @Composable
 fun InfoLocal(
-    local: Local?,
+    local: Local,
     usuarioUid: String?,
     onFechar: () -> Unit,
     onExcluir: (String) -> Unit,
     onEditar: () -> Unit,
     onChat: (String) -> Unit
 ) {
-    // Prepara dados para exibição e verifica se o usuário atual é o criador do registro
-    val nome = local?.nome ?: stringResource(R.string.sem_nome)
-    val tipo = local?.tipo ?: stringResource(R.string.sem_tipo)
-    val data = remember(local?.data) {
-        local?.data?.let {
+    // Formata a data para exibição
+    val data = remember(local.data) {
+        local.data?.let {
             SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it)
         }
     }
-    val descricao = local?.descricao ?: stringResource(R.string.sem_descricao)
-    val raio = local?.raio ?: 0.0
-    val imgs = local?.imgUrls
-    val criador = local?.uid != null && local.uid == usuarioUid
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
-            .padding(bottom = 24.dp),
+        modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Cabeçalho com título e botão de fechar
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = stringResource(R.string.detalhes_do_local),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+
+            IconButton(
+                onClick = onFechar,
+                modifier = Modifier.align(Alignment.CenterEnd)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = stringResource(R.string.fechar)
+                )
+            }
+        }
+
+        HorizontalDivider()
+
+
         Column(
-            modifier = Modifier.padding(horizontal = 24.dp),
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(top = 4.dp, bottom = 24.dp)
+                .padding(horizontal = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Cabeçalho com título e botão de fechar
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = stringResource(R.string.detalhes_do_local),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
+            // Imagens/fotos
+            CarrosselImgs(
+                imgs = local.imgUrls,
+                modifier = Modifier.fillMaxWidth()
+            )
 
-                IconButton(
-                    onClick = onFechar,
-                    modifier = Modifier.align(Alignment.CenterEnd)
-                ) {
+            // Nome
+            ListItem(
+                headlineContent = {
+                    Text(local.nome, fontWeight = FontWeight.SemiBold)
+                },
+                overlineContent = {
+                    Text(stringResource(R.string.o_que_foi_perdido))
+                },
+                leadingContent = {
                     Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = stringResource(R.string.fechar)
+                        imageVector = Icons.Default.Info,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
                     )
-                }
-            }
+                },
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+            )
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            // Tipo
+            ListItem(
+                headlineContent = {
+                    Text(
+                        text = local.tipo,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                },
+                overlineContent = {
+                    Text(stringResource(R.string.tipo))
+                },
+                leadingContent = {
+                    Icon(
+                        imageVector = Icons.Default.Category,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+            )
 
-            // Exibe as imagens se disponíveis
-            if (!imgs.isNullOrEmpty()) {
-                CarrosselImgs(
-                    imgs = imgs,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
+            // Data
+            ListItem(
+                headlineContent = {
+                    Text(
+                        text = data ?: stringResource(R.string.sem_data),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                },
+                overlineContent = { Text(stringResource(R.string.data)) },
+                leadingContent = {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+            )
 
-            // Lista de Informações (Nome, Tipo, Descrição, Raio)
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Nome
-                ListItem(
-                    headlineContent = {
-                        Text(nome, fontWeight = FontWeight.SemiBold)
-                    },
-                    overlineContent = { Text(stringResource(R.string.o_que_foi_perdido)) },
-                    leadingContent = {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                )
+            // Descrição
+            ListItem(
+                headlineContent = {
+                    Text(
+                        text = local.descricao,
+                        maxLines = 5,
+                        overflow = TextOverflow.Ellipsis,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                },
+                overlineContent = {
+                    Text(stringResource(R.string.descricao))
+                },
+                leadingContent = {
+                    Icon(
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+            )
 
-                // Tipo
-                ListItem(
-                    headlineContent = {
-                        Text(
-                            text = tipo,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    },
-                    overlineContent = { Text(stringResource(R.string.tipo)) },
-                    leadingContent = {
-                        Icon(
-                            imageVector = Icons.Default.Category,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                )
-
-                // Data
-                ListItem(
-                    headlineContent = {
-                        Text(
-                            text = data ?: stringResource(R.string.sem_data),
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    },
-                    overlineContent = { Text(stringResource(R.string.data)) },
-                    leadingContent = {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                )
-
-                // Descrição
-                ListItem(
-                    headlineContent = {
-                        Text(
-                            text = descricao,
-                            maxLines = 5,
-                            overflow = TextOverflow.Ellipsis,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    },
-                    overlineContent = { Text(stringResource(R.string.descricao)) },
-                    leadingContent = {
-                        Icon(
-                            imageVector = Icons.Default.LocationOn,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                )
-
-                // Raio
-                ListItem(
-                    headlineContent = {
-                        Text(
-                            text = stringResource(R.string.metros, raio.toInt()),
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    },
-                    overlineContent = { Text(stringResource(R.string.raio_da_busca)) },
-                    leadingContent = {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                )
-            }
+            // Raio
+            ListItem(
+                headlineContent = {
+                    Text(
+                        text = stringResource(R.string.metros, local.raio.toInt()),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                },
+                overlineContent = { Text(stringResource(R.string.raio_da_busca)) },
+                leadingContent = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -234,7 +230,8 @@ fun InfoLocal(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                if (criador) {
+                // Verifica se o usuário é o criador do local
+                if (local.uid == usuarioUid) {
                     // (Editar/Excluir)
                     Button(
                         onClick = { local.id.let(onExcluir) },
@@ -267,7 +264,7 @@ fun InfoLocal(
                     }
                 } else {
                     // (Cancelar/Chat)
-                    Button(
+                    TextButton(
                         onClick = onFechar,
                         modifier = Modifier.weight(1f)
                     ) {
@@ -276,7 +273,7 @@ fun InfoLocal(
 
                     Button(
                         onClick = {
-                            if (local?.uid != null) onChat(local.uid)
+                            onChat(local.uid)
                         },
                         modifier = Modifier.weight(1f)
                     ) {

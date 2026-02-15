@@ -12,16 +12,24 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,25 +41,47 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.mapa.R
-import com.example.mapa.models.Usuario
+import com.example.mapa.data.remote.dto.Usuario
+import com.example.mapa.models.UsuarioState
 import com.example.mapa.ui.componentes.AnimacaoCarregando
 import com.example.mapa.ui.componentes.AvatarImg
+import com.example.mapa.ui.componentes.DialogConfirmar
 import com.example.mapa.ui.componentes.DialogEditar
 import com.example.mapa.ui.componentes.Header
 import com.example.mapa.ui.theme.MapaTheme
+import com.example.mapa.viewmodels.AuthViewModel
+import org.koin.androidx.compose.koinViewModel
 
 @Composable
 fun TelaPerfil(
-    carregandoFoto: Boolean,
+    modifier: Modifier = Modifier,
+    authViewModel: AuthViewModel = koinViewModel()
+) {
+    val usuarioState by authViewModel.uiState.collectAsStateWithLifecycle()
+
+    TelaPerfilContent(
+        onLogout = authViewModel::logout,
+        onEditarFoto = authViewModel::atualizarFoto,
+        onEditarNome = authViewModel::atualizarNome,
+        usuarioState = usuarioState,
+        modifier = modifier
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TelaPerfilContent(
     onLogout: () -> Unit,
     onEditarFoto: (String) -> Unit,
     onEditarNome: (String) -> Unit,
     modifier: Modifier = Modifier,
-    usuario: Usuario? = null
+    usuarioState: UsuarioState
 ) {
     // Estado dos diálogo de edição
     var mostrarDialogEditar by rememberSaveable { mutableStateOf(false) }
+    var mostrarDialogConfirmar by rememberSaveable { mutableStateOf(false) }
 
     // Launcher de seleção de imagem
     val photoPickerLauncher = rememberLauncherForActivityResult(
@@ -64,7 +94,7 @@ fun TelaPerfil(
     // Dialog de edição de nome
     DialogEditar(
         visivel = mostrarDialogEditar,
-        textoInicial = usuario?.nome ?: "",
+        textoInicial = usuarioState.usuario?.nome ?: "",
         titulo = stringResource(R.string.editar_nome),
         label = stringResource(R.string.nome),
         onFechar = { mostrarDialogEditar = false },
@@ -72,6 +102,16 @@ fun TelaPerfil(
             onEditarNome(it)
             mostrarDialogEditar = false
         }
+    )
+
+    // Dialog de confirmação de logout
+    DialogConfirmar(
+        visivel = mostrarDialogConfirmar,
+        titulo = stringResource(R.string.sair_pergunta),
+        texto = stringResource(R.string.tem_certeza_que_deseja_sair),
+        onFechar = { mostrarDialogConfirmar = false },
+        textoConfirmar = stringResource(R.string.sair),
+        onConfirmar = onLogout
     )
 
     Column(
@@ -85,7 +125,9 @@ fun TelaPerfil(
         )
 
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -94,31 +136,44 @@ fun TelaPerfil(
                 contentAlignment = Alignment.Center
             ) {
                 // Avatar com feedback de carregamento
-                if (carregandoFoto) AnimacaoCarregando()
+                if (usuarioState.carregandoFoto) AnimacaoCarregando(size = 48.dp)
                 else AvatarImg(
-                    foto = usuario?.foto,
+                    foto = usuarioState.usuario?.foto,
                     modifier = Modifier.size(120.dp)
                 )
 
-                // Botão de edição de foto
-                IconButton(
-                    onClick = {
-                        photoPickerLauncher.launch(
-                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                        )
-                    },
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surface),
-                    shape = CircleShape,
-                    enabled = !carregandoFoto,
+                Box(
+                    modifier = Modifier.align(Alignment.BottomEnd)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.CameraAlt,
-                        contentDescription = stringResource(R.string.alterar_foto),
-                        tint = MaterialTheme.colorScheme.onSurface,
-                    )
+                    // Botão de alterar foto com dica de uso
+                    TooltipBox(
+                        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+                        tooltip = {
+                            PlainTooltip {
+                                Text(stringResource(R.string.alterar_foto))
+                            }
+                        },
+                        state = rememberTooltipState()
+                    ) {
+                        IconButton(
+                            onClick = {
+                                photoPickerLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            },
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surface),
+                            shape = CircleShape,
+                            enabled = !usuarioState.carregandoFoto,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CameraAlt,
+                                contentDescription = stringResource(R.string.alterar_foto),
+                                tint = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+                    }
                 }
             }
 
@@ -128,23 +183,33 @@ fun TelaPerfil(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = usuario?.nome ?: stringResource(R.string.usu_rio_desconhecido),
+                    text = usuarioState.usuario?.nome ?: stringResource(R.string.usu_rio_desconhecido),
                     style = MaterialTheme.typography.headlineMedium
                 )
 
-                // Botão de edição de nome
-                IconButton(
-                    onClick = { mostrarDialogEditar = !mostrarDialogEditar },
+                // Botão de editar nome com dica de uso
+                TooltipBox(
+                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+                    tooltip = {
+                        PlainTooltip {
+                            Text(stringResource(R.string.editar_nome))
+                        }
+                    },
+                    state = rememberTooltipState()
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = stringResource(R.string.editar_nome),
-                    )
+                    IconButton(
+                        onClick = { mostrarDialogEditar = !mostrarDialogEditar },
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = stringResource(R.string.editar_nome),
+                        )
+                    }
                 }
             }
 
             Text(
-                text = usuario?.email ?: "",
+                text = usuarioState.usuario?.email ?: "",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -152,7 +217,7 @@ fun TelaPerfil(
             Spacer(modifier = Modifier.height(32.dp))
 
             Button(
-                onClick = onLogout,
+                onClick = { mostrarDialogConfirmar = true },
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
             ) {
                 Text(text = stringResource(R.string.sair_da_conta))
@@ -163,16 +228,20 @@ fun TelaPerfil(
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
-fun TelaPerfilPreview() {
+fun TelaPerfilContentPreview() {
     MapaTheme {
-        TelaPerfil(
-            usuario = Usuario(
-                uid = "123",
-                nome = "João da Silva",
-                email = "joaosilva@example.com",
-                foto = "https://cdn-icons-png.flaticon.com/512/12225/12225881.png"
+        TelaPerfilContent(
+            usuarioState = UsuarioState(
+                Usuario (
+                    uid = "123",
+                    nome = "João da Silva",
+                    email = "joaosilva@example.com",
+                    foto = "https://cdn-icons-png.flaticon.com/512/12225/12225881.png"
+                ),
+                logado = true,
+                carregandoFoto = false,
+                carregandoNome = false
             ),
-            carregandoFoto = false,
             onLogout = {},
             onEditarFoto = {},
             onEditarNome = {}

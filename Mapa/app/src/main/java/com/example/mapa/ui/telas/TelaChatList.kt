@@ -1,7 +1,9 @@
 package com.example.mapa.ui.telas
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,29 +11,36 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -40,11 +49,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.mapa.R
-import com.example.mapa.models.Chat
+import com.example.mapa.data.remote.dto.Chat
 import com.example.mapa.models.ChatItem
-import com.example.mapa.models.ChatListUiState
+import com.example.mapa.models.ChatListState
 import com.example.mapa.models.Mensagem
-import com.example.mapa.models.Usuario
+import com.example.mapa.data.remote.dto.Usuario
 import com.example.mapa.ui.componentes.Animacao
 import com.example.mapa.ui.componentes.AvatarImg
 import com.example.mapa.ui.componentes.Header
@@ -58,24 +67,26 @@ import java.util.Locale
 
 @Composable
 fun TelaChatList(
-    onConversaClick: (String) -> Unit,
+    onConversa: (String) -> Unit,
     modifier: Modifier = Modifier,
     chatListViewModel: ChatListViewModel = koinViewModel(),
 ) {
     // Coleta o estado do ViewModel
     val uiState by chatListViewModel.uiState.collectAsStateWithLifecycle()
 
-    ChatList(
+    TelaChatListContent(
         chatState = uiState,
-        onConversaClick = onConversaClick,
+        onConversa = onConversa,
+        onExcluir = chatListViewModel::excluirConversa,
         modifier = modifier
     )
 }
 
 @Composable
-fun ChatList(
-    chatState: ChatListUiState,
-    onConversaClick: (String) -> Unit,
+fun TelaChatListContent(
+    chatState: ChatListState,
+    onConversa: (String) -> Unit,
+    onExcluir: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     // Estado do texto barra de pesquisa
@@ -86,8 +97,8 @@ fun ChatList(
         if (textoPesquisa.isBlank()) chatState.chats
         else {
             chatState.chats.filter { item ->
-                item.destinatario?.nome?.contains(textoPesquisa, ignoreCase = true) == true ||
-                        item.chat.ultimaMsg.texto.contains(textoPesquisa, ignoreCase = true)
+                item.contato?.nome?.contains(textoPesquisa, ignoreCase = true) == true ||
+                        item.chat.ultimaMsg?.texto?.contains(textoPesquisa, ignoreCase = true) == true
             }
         }
     }
@@ -210,26 +221,59 @@ fun ChatList(
 
             // Estado de sucesso com dados
             else -> {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    itemsIndexed(
                         items = chatsFiltrados,
-                        key = { it.chat.salaId }
-                    ) { item ->
-                        val destinatario = item.destinatario
-                        val chat = item.chat
-                        val nomeExibicao = destinatario?.nome
-                        val fotoExibicao = destinatario?.foto
-                        val destinatarioUid = destinatario?.uid ?: ""
+                        key = { _, item -> item.chat.salaId }
+                    ) { index, item ->
+                        val dismissState = rememberSwipeToDismissBoxState()
 
-                        ConversaItem(
-                            nome = nomeExibicao ?: stringResource(R.string.usuario_desconhecido),
-                            foto = fotoExibicao,
-                            msg = chat.ultimaMsg,
-                            onClick = {
-                                if (destinatarioUid.isNotEmpty()) onConversaClick(destinatarioUid)
+                        // Reage à mudança de estado
+                        LaunchedEffect(dismissState.currentValue) {
+                            if (dismissState.currentValue == SwipeToDismissBoxValue.EndToStart) onExcluir(item.chat.salaId)
+                        }
+
+                        val itemShape = when {
+                            chatsFiltrados.size == 1 -> RoundedCornerShape(24.dp)
+                            index == 0 -> RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                            index == chatsFiltrados.lastIndex -> RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
+                            else -> RectangleShape
+                        }
+
+                        SwipeToDismissBox(
+                            state = dismissState,
+                            enableDismissFromStartToEnd = false,
+                            backgroundContent = {
+                                val color = MaterialTheme.colorScheme.errorContainer
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(itemShape)
+                                        .background(color)
+                                        .padding(horizontal = 24.dp),
+                                    contentAlignment = Alignment.CenterEnd
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Excluir",
+                                        tint = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                }
+                            },
+                            content = {
+                                ConversaItem(
+                                    chatItem = item,
+                                    onClick = {
+                                        if (item.contato?.uid?.isNotEmpty() == true) onConversa(item.contato.uid)
+                                    },
+                                    modifier = Modifier.clip(itemShape)
+                                )
                             }
                         )
-                        HorizontalDivider()
                     }
                 }
             }
@@ -239,23 +283,22 @@ fun ChatList(
 
 @Composable
 fun ConversaItem(
-    nome: String,
-    foto: String?,
-    msg: Mensagem,
-    onClick: () -> Unit
+    chatItem: ChatItem,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     ListItem(
-        modifier = Modifier.clickable { onClick() },
+        modifier = modifier.clickable { onClick() },
         tonalElevation = 4.dp,
         leadingContent = {
             AvatarImg(
-                foto = foto,
+                foto = chatItem.contato?.foto,
                 modifier = Modifier.size(48.dp)
             )
         },
         headlineContent = {
             Text(
-                text = nome,
+                text = chatItem.contato?.nome ?: stringResource(R.string.usuario_desconhecido),
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -266,14 +309,16 @@ fun ConversaItem(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(
-                    imageVector = if (msg.lido) Icons.Default.DoneAll else Icons.Default.Done,
-                    contentDescription = if (msg.lido) stringResource(R.string.lido) else stringResource(R.string.enviado),
-                    tint = if (msg.lido) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.size(14.dp)
-                )
+                if (chatItem.chat.ultimaMsg?.autorUid == chatItem.contato?.uid) {
+                    Icon(
+                        imageVector = if (chatItem.chat.ultimaMsg?.lido == true) Icons.Default.DoneAll else Icons.Default.Done,
+                        contentDescription = if (chatItem.chat.ultimaMsg?.lido == true) stringResource(R.string.lido) else stringResource(R.string.enviado),
+                        tint = if (chatItem.chat.ultimaMsg?.lido == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
 
-                if (msg.imgUrls.isNotEmpty()) {
+                if (chatItem.chat.ultimaMsg?.imgUrls?.isNotEmpty() == true) {
                     Icon(
                         imageVector = Icons.Default.Image,
                         contentDescription = stringResource(R.string.imagem),
@@ -282,7 +327,11 @@ fun ConversaItem(
                 }
 
                 Text(
-                    text = msg.texto.ifBlank { stringResource(R.string.foto) },
+                    text = when {
+                        chatItem.chat.ultimaMsg?.texto?.isNotBlank() == true -> chatItem.chat.ultimaMsg.texto
+                        chatItem.chat.ultimaMsg?.imgUrls?.isNotEmpty() == true -> stringResource(R.string.foto)
+                        else -> ""
+                    },
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.bodyMedium
@@ -290,7 +339,7 @@ fun ConversaItem(
             }
         },
         trailingContent = {
-            val data = Date(msg.timestamp)
+            val data = Date(chatItem.chat.ultimaMsg?.timestamp ?: 0)
             val fmt = SimpleDateFormat("HH:mm", Locale.getDefault())
 
             Text(
@@ -303,24 +352,25 @@ fun ConversaItem(
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
-fun ChatListPreview() {
+fun TelaChatListContentPreview() {
     MapaTheme {
-        ChatList(
-            chatState = ChatListUiState(
+        TelaChatListContent(
+            chatState = ChatListState(
                 carregando = false,
                 erro = null,
                 chats = listOf(
                     ChatItem(
                         chat = Chat(salaId = "1", ultimaMsg = Mensagem(texto = "Olá, tudo bem?")),
-                        destinatario = Usuario(nome = "João")
+                        contato = Usuario(nome = "João")
                     ),
                     ChatItem(
                         chat = Chat(salaId = "2", ultimaMsg = Mensagem(texto = "Como vai?")),
-                        destinatario = Usuario(nome = "Maria")
+                        contato = Usuario(nome = "Maria")
                     )
                 )
             ),
-            onConversaClick = {}
+            onConversa = {},
+            onExcluir = {}
         )
     }
 }

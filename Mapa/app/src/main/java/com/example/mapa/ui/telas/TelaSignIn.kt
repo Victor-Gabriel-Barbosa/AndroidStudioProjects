@@ -1,9 +1,9 @@
 package com.example.mapa.ui.telas
 
 import android.content.Context
+import android.util.Log
 import android.util.Patterns
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -30,7 +29,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -49,8 +47,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
@@ -78,9 +76,9 @@ import kotlinx.coroutines.launch
 @Composable
 fun TelaSignIn(
     loginState: LoginState,
-    onLoginClick: (String, String) -> Unit,
-    onGoogleLoginClick: (AuthCredential) -> Unit,
-    onNavegarParaSignup: () -> Unit,
+    onLogin: (String, String) -> Unit,
+    onGoogleLogin: (AuthCredential) -> Unit,
+    onNavSignup: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -107,41 +105,39 @@ fun TelaSignIn(
         erroEmail = null
         erroSenha = null
 
-        var temErro = false
+        var erro = false
 
         // Valida email (Vazio ou Formato inválido)
         if (email.isBlank()) {
             erroEmail = R.string.o_e_mail_obrigatorio
-            temErro = true
+            erro = true
         } else if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
             erroEmail = R.string.formato_de_e_mail_invalido
-            temErro = true
+            erro = true
         }
 
         // Valida senha (Tamanho)
         if (senha.length < 6) {
             erroSenha = R.string.a_senha_deve_ter_no_minimo_6_caracteres
-            temErro = true
+            erro = true
         }
 
-        if (!temErro) {
+        if (!erro) {
             focusManager.clearFocus() // Esconde o teclado
-            onLoginClick(email, senha)
+            onLogin(email, senha)
         }
     }
 
     Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.background,
-                        MaterialTheme.colorScheme.secondaryContainer
-                    )
-                )
-            )
+        modifier = modifier.fillMaxSize()
     ) {
+        Image(
+            painter = painterResource(id = R.drawable.login_background),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.matchParentSize()
+        )
+
         Column(
             modifier = modifier
                 .fillMaxSize()
@@ -160,11 +156,11 @@ fun TelaSignIn(
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                shape = RoundedCornerShape(24.dp),
+                shape = MaterialTheme.shapes.extraLarge,
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+                ),
+                border = CardDefaults.outlinedCardBorder()
             ) {
                 Column(
                     modifier = Modifier.padding(24.dp),
@@ -190,15 +186,16 @@ fun TelaSignIn(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(32.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
+                    // Campo de email
                     OutlinedTextField(
                         value = email,
                         onValueChange = {
                             email = it
                             if (erroEmail != null) erroEmail = null // Limpa erro ao digitar
                         },
-                        label = { Text(stringResource(R.string.e_mail)) },
+                        label = { Text(stringResource(R.string.e_mail) + '*') },
                         shape = MaterialTheme.shapes.medium,
                         modifier = Modifier.fillMaxWidth(),
                         enabled = loginState !is LoginState.Carregando, // Desabilita enquanto carrega
@@ -216,15 +213,16 @@ fun TelaSignIn(
                         }
                     )
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
+                    // Campo de senha
                     OutlinedTextField(
                         value = senha,
                         onValueChange = {
                             senha = it
                             if (erroSenha != null) erroSenha = null
                         },
-                        label = { Text(stringResource(R.string.senha)) },
+                        label = { Text(stringResource(R.string.senha) + '*') },
                         shape = MaterialTheme.shapes.medium,
                         modifier = Modifier.fillMaxWidth(),
                         enabled = loginState !is LoginState.Carregando,
@@ -251,7 +249,7 @@ fun TelaSignIn(
                         }
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     // Botão de Login ou Loading
                     if (loginState is LoginState.Carregando) AnimacaoCarregando()
@@ -303,7 +301,7 @@ fun TelaSignIn(
                         onClick = {
                             scope.launch {
                                 val credential = signInWithGoogle(context, credentialManager)
-                                if (credential != null) onGoogleLoginClick(credential)
+                                if (credential != null) onGoogleLogin(credential)
                             }
                         },
                         modifier = Modifier
@@ -320,20 +318,23 @@ fun TelaSignIn(
                                 modifier = Modifier.size(24.dp),
                                 tint = Color.Unspecified
                             )
-                            Spacer(modifier = Modifier.width(12.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(text = stringResource(R.string.entrar_com_google))
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    TextButton(
+                        onClick = onNavSignup,
+                        enabled = loginState !is LoginState.Carregando,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                    ) {
+                        Text(text = stringResource(R.string.nao_tem_conta_cadastre_se))
+                    }
                 }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            TextButton(
-                onClick = onNavegarParaSignup,
-                enabled = loginState !is LoginState.Carregando
-            ) {
-                Text(stringResource(R.string.nao_tem_conta_cadastre_se))
             }
         }
     }
@@ -365,6 +366,7 @@ suspend fun signInWithGoogle(
 
         return null
     } catch (e: GetCredentialException) {
+        Log.e("TelaSignIn", "signInWithGoogle: ${e.message}")
         return null
     }
 }
@@ -374,10 +376,10 @@ suspend fun signInWithGoogle(
 fun TelaSignInPreview() {
     MapaTheme {
         TelaSignIn(
-            loginState = LoginState.Carregando,
-            onLoginClick = { _, _ -> },
-            onGoogleLoginClick = {},
-            onNavegarParaSignup = {}
+            loginState = LoginState.Parado,
+            onLogin = { _, _ -> },
+            onGoogleLogin = {},
+            onNavSignup = {}
         )
     }
 }

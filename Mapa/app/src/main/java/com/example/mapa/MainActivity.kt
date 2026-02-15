@@ -8,8 +8,8 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.mapa.models.LoginState
 import com.example.mapa.ui.componentes.OverlayCarregando
-import com.example.mapa.ui.navegacao.AuthFlow
-import com.example.mapa.ui.navegacao.MapaApp
+import com.example.mapa.ui.navegacao.AuthNav
+import com.example.mapa.ui.navegacao.MapaNav
 import com.example.mapa.ui.theme.MapaTheme
 import com.example.mapa.viewmodels.AuthViewModel
 import com.google.firebase.Firebase
@@ -36,19 +36,16 @@ class MainActivity : ComponentActivity() {
                     // Variáveis e estados de autenticação
                     val authViewModel: AuthViewModel = koinViewModel()
                     val loginState by authViewModel.loginState.collectAsStateWithLifecycle()
-                    val usuarioLogado by authViewModel.usuarioAtivoLogado.collectAsStateWithLifecycle()
-                    val usuario by authViewModel.usuarioAtivoState.collectAsStateWithLifecycle(null)
-                    val carregandoFoto by authViewModel.carregandoFoto.collectAsStateWithLifecycle()
+                    val usuarioState by authViewModel.uiState.collectAsStateWithLifecycle()
 
                     when {
                         // Exibe a tela de carregamento enquanto verifica o estado de autenticação
-                        usuarioLogado == null -> OverlayCarregando()
+                        usuarioState.logado == null -> OverlayCarregando()
 
                         // Exibe a tela principal se o usuário estiver logado
-                        usuarioLogado == true && loginState is LoginState.Parado -> {
-                            MapaApp(
-                                carregandoFoto = carregandoFoto,
-                                usuario = usuario,
+                        usuarioState.logado == true && loginState is LoginState.Parado -> {
+                            MapaNav(
+                                usuarioState = usuarioState,
                                 onLogout = { authViewModel.logout() },
                                 onEditarFoto = { authViewModel.atualizarFoto(it) },
                                 onEditarNome = { authViewModel.atualizarNome(it) }
@@ -57,7 +54,7 @@ class MainActivity : ComponentActivity() {
 
                         // Caso contrário, exibe a tela de autenticação
                         else -> {
-                            AuthFlow(
+                            AuthNav(
                                 authViewModel = authViewModel,
                                 loginState = loginState,
                                 onLoginConcluido = { authViewModel.resetState() }

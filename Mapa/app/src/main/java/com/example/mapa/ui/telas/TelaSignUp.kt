@@ -2,7 +2,6 @@ package com.example.mapa.ui.telas
 
 import android.util.Patterns
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,7 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -43,7 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -62,7 +60,7 @@ import com.example.mapa.ui.theme.MapaTheme
 @Composable
 fun TelaSignUp(
     loginState: LoginState,
-    onSignupClick: (String, String) -> Unit,
+    onSignup: (String, String) -> Unit,
     onNavegarParaLogin: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -88,47 +86,45 @@ fun TelaSignUp(
         erroSenha = null
         erroConfirmacao = null
 
-        var temErro = false
+        var erro = false
 
         // Valida email (Vazio ou Formato inválido)
         if (email.isBlank()) {
             erroEmail = R.string.o_e_mail_obrigatorio
-            temErro = true
+            erro = true
         } else if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
             erroEmail = R.string.formato_de_e_mail_invalido
-            temErro = true
+            erro = true
         }
 
         // Valida senha (Tamanho)
         if (senha.length < 6) {
             erroSenha = R.string.a_senha_deve_ter_no_minimo_6_caracteres
-            temErro = true
+            erro = true
         }
 
         // Valida confirmação de senha (Igualdade)
         if (confirmacaoSenha != senha) {
             erroConfirmacao = R.string.as_senhas_nao_coincidem
-            temErro = true
+            erro = true
         }
 
-        if (!temErro) {
+        if (!erro) {
             focusManager.clearFocus() // Esconde o teclado
-            onSignupClick(email, senha)
+            onSignup(email, senha)
         }
     }
 
     Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.background,
-                        MaterialTheme.colorScheme.secondaryContainer
-                    )
-                )
-            )
+        modifier = modifier.fillMaxSize()
     ) {
+        Image(
+            painter = painterResource(id = R.drawable.login_background),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.matchParentSize()
+        )
+
         Column(
             modifier = modifier
                 .fillMaxSize()
@@ -147,11 +143,11 @@ fun TelaSignUp(
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                shape = RoundedCornerShape(24.dp),
+                shape = MaterialTheme.shapes.extraLarge,
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+                ),
+                border = CardDefaults.outlinedCardBorder()
             ) {
                 Column(
                     modifier = Modifier.padding(24.dp),
@@ -177,16 +173,16 @@ fun TelaSignUp(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(32.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                    // Campo de E-mail
+                    // Campo de email
                     OutlinedTextField(
                         value = email,
                         onValueChange = {
                             email = it
                             if (erroEmail != null) erroEmail = null // Limpa erro ao digitar
                         },
-                        label = { Text(stringResource(R.string.e_mail)) },
+                        label = { Text(stringResource(R.string.e_mail) + '*') },
                         shape = MaterialTheme.shapes.medium,
                         modifier = Modifier.fillMaxWidth(),
                         enabled = loginState !is LoginState.Carregando,
@@ -213,7 +209,7 @@ fun TelaSignUp(
                             senha = it
                             if (erroSenha != null) erroSenha = null
                         },
-                        label = { Text(stringResource(R.string.senha)) },
+                        label = { Text(stringResource(R.string.senha) + '*') },
                         shape = MaterialTheme.shapes.medium,
                         modifier = Modifier.fillMaxWidth(),
                         enabled = loginState !is LoginState.Carregando,
@@ -249,7 +245,7 @@ fun TelaSignUp(
                             confirmacaoSenha = it
                             if (erroConfirmacao != null) erroConfirmacao = null
                         },
-                        label = { Text(stringResource(R.string.confirmar_senha)) },
+                        label = { Text(stringResource(R.string.confirmar_senha) + '*') },
                         shape = MaterialTheme.shapes.medium,
                         modifier = Modifier.fillMaxWidth(),
                         enabled = loginState !is LoginState.Carregando,
@@ -280,7 +276,7 @@ fun TelaSignUp(
                         }
                     )
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     if (loginState is LoginState.Carregando) AnimacaoCarregando()
                     else {
@@ -297,16 +293,19 @@ fun TelaSignUp(
                             )
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    TextButton(
+                        onClick = onNavegarParaLogin,
+                        enabled = loginState !is LoginState.Carregando,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
+                    ) {
+                        Text(stringResource(R.string.ja_tem_conta_faca_login))
+                    }
                 }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            TextButton(
-                onClick = onNavegarParaLogin,
-                enabled = loginState !is LoginState.Carregando
-            ) {
-                Text(stringResource(R.string.ja_tem_conta_faca_login))
             }
         }
     }
@@ -317,8 +316,8 @@ fun TelaSignUp(
 fun TelaSignUpPreview() {
     MapaTheme {
         TelaSignUp(
-            loginState = LoginState.Carregando,
-            onSignupClick = { _, _ -> },
+            loginState = LoginState.Parado,
+            onSignup = { _, _ -> },
             onNavegarParaLogin = {}
         )
     }
