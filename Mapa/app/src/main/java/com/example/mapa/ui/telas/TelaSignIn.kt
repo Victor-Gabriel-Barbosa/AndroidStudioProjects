@@ -66,6 +66,7 @@ import androidx.credentials.exceptions.GetCredentialException
 import com.example.mapa.R
 import com.example.mapa.models.LoginState
 import com.example.mapa.ui.componentes.AnimacaoCarregando
+import com.example.mapa.utils.reqLabel
 import com.example.mapa.ui.theme.MapaTheme
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
@@ -195,7 +196,7 @@ fun TelaSignIn(
                             email = it
                             if (erroEmail != null) erroEmail = null // Limpa erro ao digitar
                         },
-                        label = { Text(stringResource(R.string.e_mail) + '*') },
+                        label = { Text(stringResource(R.string.e_mail).reqLabel()) },
                         shape = MaterialTheme.shapes.medium,
                         modifier = Modifier.fillMaxWidth(),
                         enabled = loginState !is LoginState.Carregando, // Desabilita enquanto carrega
@@ -222,7 +223,7 @@ fun TelaSignIn(
                             senha = it
                             if (erroSenha != null) erroSenha = null
                         },
-                        label = { Text(stringResource(R.string.senha) + '*') },
+                        label = { Text(stringResource(R.string.senha).reqLabel()) },
                         shape = MaterialTheme.shapes.medium,
                         modifier = Modifier.fillMaxWidth(),
                         enabled = loginState !is LoginState.Carregando,

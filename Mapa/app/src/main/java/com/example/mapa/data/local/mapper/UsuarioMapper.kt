@@ -1,18 +1,26 @@
 package com.example.mapa.data.local.mapper
 
 import com.example.mapa.data.local.entity.UsuarioEntity
-import com.example.mapa.data.remote.dto.Usuario
+import com.example.mapa.data.remote.dto.UsuarioDTO
 
-fun Usuario.toEntity() = UsuarioEntity(
+fun UsuarioDTO.toEntity() = UsuarioEntity(
     id = this.uid,
     nome = this.nome,
     email = this.email,
-    fotoUrl = this.foto
+    fotoUrl = this.foto,
+    notaMedia = this.notaMedia,
+    notaQtd = this.notaQtd,
+    avaliadores = this.avaliadores.joinToString("|"),
+    fcmToken = this.fcmToken
 )
 
-fun UsuarioEntity.toDomain() = Usuario(
+fun UsuarioEntity.toDomain() = UsuarioDTO(
     uid = this.id,
     nome = this.nome,
     email = this.email,
-    foto = this.fotoUrl
+    foto = this.fotoUrl,
+    notaMedia = this.notaMedia,
+    notaQtd = this.notaQtd,
+    avaliadores = if (this.avaliadores.isBlank()) emptyList() else this.avaliadores.split("|"),
+    fcmToken = this.fcmToken
 )

@@ -19,5 +19,5 @@ sealed interface Rotas : Parcelable {
     @Parcelize data object Perfil : Rotas
     @Parcelize data object ChatGraph : Rotas
     @Parcelize data object ChatList : Rotas
-    @Parcelize data class ChatDetalhe(val uid: String) : Rotas
+    @Parcelize data class ChatDetalhe(val uid: String, val localId: String) : Rotas
 }

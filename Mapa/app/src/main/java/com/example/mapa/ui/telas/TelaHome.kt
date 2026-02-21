@@ -1,7 +1,12 @@
 package com.example.mapa.ui.telas
 
+import android.Manifest
 import android.annotation.SuppressLint
+import android.os.Build
+import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -34,9 +39,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.mapa.R
-import com.example.mapa.data.remote.dto.Local
+import com.example.mapa.data.remote.dto.LocalDTO
 import com.example.mapa.models.LocalState
-import com.example.mapa.data.remote.dto.Usuario
+import com.example.mapa.data.remote.dto.UsuarioDTO
 import com.example.mapa.ui.componentes.DialogExcluir
 import com.example.mapa.ui.componentes.FormLocal
 import com.example.mapa.ui.componentes.Header
@@ -62,12 +67,26 @@ import org.koin.androidx.compose.koinViewModel
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun TelaHome(
-    onChat: (String) -> Unit,
+    onChat: (String, String) -> Unit,
     modifier: Modifier = Modifier,
-    usuario: Usuario? = null,
+    usuarioDto: UsuarioDTO? = null,
     localViewModel: LocalViewModel = koinViewModel()
 ) {
     val context = LocalContext.current
+
+    // Solicita permissões de notificações
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { concedido ->
+        if (concedido) {
+            Log.d("Permissao", "Notificações permitidas")
+        }
+    }
+
+    // Solicita permissão de notificações
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
 
     // Variáveis de estado para o mapa
     val uiState by localViewModel.uiState.collectAsStateWithLifecycle()
@@ -76,8 +95,8 @@ fun TelaHome(
     // Lista de estados das permissões de localização
     val locationPermissionState = rememberMultiplePermissionsState(
         permissions = listOf(
-            android.Manifest.permission.ACCESS_FINE_LOCATION,
-            android.Manifest.permission.ACCESS_COARSE_LOCATION
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
         )
     )
 
@@ -102,14 +121,14 @@ fun TelaHome(
 
     // Feedback visual (Toasts) vindo do ViewModel
     LaunchedEffect(Unit) {
-        localViewModel.mensagens.collect { msg ->
+        localViewModel.canal.collect { msg ->
             Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
         }
     }
 
     TelaHomeContent(
         modifier = modifier,
-        usuario = usuario,
+        usuarioDto = usuarioDto,
         localState = uiState,
         cameraPositionState = cameraPositionState,
         permissaoLocalizacao = locationPermissionState.allPermissionsGranted,
@@ -124,19 +143,19 @@ fun TelaHome(
 @Composable
 fun TelaHomeContent(
     modifier: Modifier = Modifier,
-    usuario: Usuario?,
+    usuarioDto: UsuarioDTO?,
     localState: LocalState,
     cameraPositionState: CameraPositionState,
     permissaoLocalizacao: Boolean,
-    onAdicionarLocal: (Local) -> Unit,
-    onEditarLocal: (Local) -> Unit,
+    onAdicionarLocal: (LocalDTO) -> Unit,
+    onEditarLocal: (LocalDTO) -> Unit,
     onRemoverLocal: (String) -> Unit,
-    onChat: (String) -> Unit
+    onChat: (String, String) -> Unit
 ) {
     // Estados de UI (formulários, seleção, sheet)
     var mapaCarregando by remember { mutableStateOf(true) }
     var localMarcado by rememberSaveable { mutableStateOf<LatLng?>(null) }
-    var localSelecionado by rememberSaveable { mutableStateOf<Local?>(null) }
+    var localDTOSelecionado by rememberSaveable { mutableStateOf<LocalDTO?>(null) }
     var raio by rememberSaveable { mutableDoubleStateOf(50.0) }
     var mostrarDialogExcluir by rememberSaveable { mutableStateOf(false) }
     var editando by rememberSaveable { mutableStateOf(false) }
@@ -150,7 +169,7 @@ fun TelaHomeContent(
     )
 
     // Atualiza a visibilidade do BottomSheet quando um novo local é adicionado ou selecionado
-    val sheetVisivel = localMarcado != null || localSelecionado != null
+    val sheetVisivel = localMarcado != null || localDTOSelecionado != null
     LaunchedEffect(sheetVisivel) {
         if (sheetVisivel) scaffoldState.bottomSheetState.partialExpand()
         else scaffoldState.bottomSheetState.hide()
@@ -160,23 +179,23 @@ fun TelaHomeContent(
     LaunchedEffect(scaffoldState.bottomSheetState.targetValue) {
         if (scaffoldState.bottomSheetState.targetValue == SheetValue.Hidden) {
             localMarcado = null
-            localSelecionado = null
+            localDTOSelecionado = null
             editando = false
         }
     }
 
     // Diálogo de confirmação de exclusão
     DialogExcluir(
-        visivel = mostrarDialogExcluir && localSelecionado != null,
+        visivel = mostrarDialogExcluir && localDTOSelecionado != null,
         titulo = stringResource(R.string.excluir_local),
         mensagem = stringResource(
             R.string.tem_certeza_que_deseja_excluir_essa_acao_nao_pode_ser_desfeita,
-            localSelecionado?.nome ?: ""
+            localDTOSelecionado?.nome ?: ""
         ),
         onConfirmar = {
-            localSelecionado?.let { onRemoverLocal(it.id) }
+            localDTOSelecionado?.let { onRemoverLocal(it.id) }
             mostrarDialogExcluir = false
-            localSelecionado = null
+            localDTOSelecionado = null
         },
         onCancelar = { mostrarDialogExcluir = false }
     )
@@ -209,8 +228,8 @@ fun TelaHomeContent(
                     FormLocal(
                         titulo = stringResource(R.string.adicionar_novo_local),
                         carregando = localState.carregando,
-                        localInicial = Local(
-                            uid = usuario?.uid ?: "",
+                        localDTOInicial = LocalDTO(
+                            uid = usuarioDto?.uid ?: "",
                             latitude = localMarcado!!.latitude,
                             longitude = localMarcado!!.longitude,
                             raio = raio
@@ -224,31 +243,31 @@ fun TelaHomeContent(
                     )
                 }
 
-                localSelecionado != null -> {
+                localDTOSelecionado != null -> {
                     if (editando) {
                         FormLocal(
                             titulo = stringResource(R.string.editar_local),
-                            localInicial = localSelecionado!!,
+                            localDTOInicial = localDTOSelecionado!!,
                             carregando = localState.carregando,
                             onRaioChange = { raio = it },
                             onSalvar = { local ->
                                 onEditarLocal(local)
                                 editando = false
-                                localSelecionado = null
+                                localDTOSelecionado = null
                             },
                             onFechar = {
-                                localSelecionado = null
+                                localDTOSelecionado = null
                                 editando = false
                             }
                         )
                     } else {
                         InfoLocal(
-                            local = localSelecionado!!,
-                            usuarioUid = usuario?.uid,
-                            onFechar = { localSelecionado = null },
+                            localDto = localDTOSelecionado!!,
+                            usuarioUid = usuarioDto?.uid,
+                            onFechar = { localDTOSelecionado = null },
                             onExcluir = { mostrarDialogExcluir = true },
                             onEditar = {
-                                raio = localSelecionado!!.raio
+                                raio = localDTOSelecionado!!.raio
                                 editando = true
                             },
                             onChat = onChat
@@ -267,7 +286,7 @@ fun TelaHomeContent(
                 onMapLongClick = {
                     if (!localState.carregando && !mapaCarregando) {
                         localMarcado = it
-                        localSelecionado = null
+                        localDTOSelecionado = null
                     }
                 },
                 contentPadding = if (sheetVisivel) innerPadding else PaddingValues()
@@ -285,7 +304,7 @@ fun TelaHomeContent(
                         snippet = local.descricao,
                         icon = BitmapDescriptorFactory.defaultMarker(corIcone),
                         onClick = {
-                            localSelecionado = local
+                            localDTOSelecionado = local
                             localMarcado = null
                             false
                         }
@@ -333,10 +352,10 @@ fun TelaHomeContent(
 fun TelaHomeContentPreview() {
     MapaTheme {
         TelaHomeContent(
-            usuario = Usuario(uid = "123", nome = "Teste", email = "teste@email.com"),
+            usuarioDto = UsuarioDTO(uid = "123", nome = "Teste", email = "teste@email.com"),
             localState = LocalState(
                 locais = listOf(
-                    Local(
+                    LocalDTO(
                         id = "1",
                         latitude = -23.550520,
                         longitude = -46.633308,
@@ -354,7 +373,7 @@ fun TelaHomeContentPreview() {
             onAdicionarLocal = {},
             onEditarLocal = {},
             onRemoverLocal = {},
-            onChat = {}
+            onChat = { _, _ -> }
         )
     }
 }

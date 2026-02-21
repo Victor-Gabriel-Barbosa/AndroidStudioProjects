@@ -1,10 +1,8 @@
 package com.example.mapa.ui.componentes
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -18,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.mapa.ui.theme.MapaTheme
@@ -38,11 +37,10 @@ fun Header(
     Surface(
         modifier = modifier.padding(8.dp),
         shape = MaterialTheme.shapes.extraLarge,
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 8.dp
+        color = MaterialTheme.colorScheme.surface
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Image(
@@ -59,6 +57,8 @@ fun Header(
                 text = titulo,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -67,18 +67,13 @@ fun Header(
 /**
  * Preview do componente [Header].
  */
-@Preview(showBackground = true, showSystemUi = true)
+@Preview
 @Composable
 private fun HeaderPreview() {
     MapaTheme {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Header(
-                titulo = "Teste",
-                icone = com.example.mapa.R.drawable.logo,
-            )
-        }
+        Header(
+            titulo = "Teste",
+            icone = com.example.mapa.R.drawable.logo
+        )
     }
 }

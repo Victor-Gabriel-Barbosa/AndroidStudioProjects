@@ -126,7 +126,7 @@ private fun DialogImgPreview() {
     MapaTheme {
         DialogImg(
             img = "https://4kwallpapers.com/images/walls/thumbs_3t/24938.jpg",
-            onFechar = { }
+            onFechar = {}
         )
     }
 }

@@ -98,4 +98,17 @@
     <string name="descricao_reticencias">Descrição...</string>
     <string name="ir_para_o_fim">Ir para o fim</string>
     <string name="usuario_sem_foto">Usuário sem foto</string>
+    <string name="nenhum_local_encontrado">Nenhum local encontrado</string>
+    <string name="estrela">Estrela %1$d</string>
+    <string name="entregue">Entregue</string>
+    <string name="avaliar">Avaliar</string>
+    <string name="qual_nota_voc_da_para_a_ajuda">Qual nota você dá para a ajuda?</string>
+    <string name="confirmar">Confirmar</string>
+    <string name="selecionado">Selecionado</string>
+    <string name="cancelar_selecao">Cancelar seleção</string>
+    <string name="excluir_selecionados">Excluir selecionados</string>
+    <string name="editar_ou_excluir">Editar ou excluir</string>
+    <string name="copiar">Copiar</string>
+    <string name="copiar_texto">Copiar texto</string>
+    <string name="excluir_mensagem">Excluir mensagem</string>
 </resources>

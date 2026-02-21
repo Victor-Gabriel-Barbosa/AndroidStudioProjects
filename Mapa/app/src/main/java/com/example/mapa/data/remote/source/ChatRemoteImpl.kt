@@ -1,0 +1,239 @@
+package com.example.mapa.data.remote.source
+
+import android.util.Log
+import androidx.core.net.toUri
+import com.example.mapa.data.remote.dto.ChatDTO
+import com.example.mapa.data.remote.dto.MensagemDTO
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.SetOptions
+import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.tasks.await
+import java.util.UUID
+
+/**
+ * Implementação do [ChatRemote] que utiliza o Firebase Firestore para o banco de dados de mensagens
+ * e o Firebase Storage para o armazenamento de imagens.
+ *
+ * @property db Instância do [FirebaseFirestore] para operações de banco de dados.
+ * @property storage Instância do [FirebaseStorage] para upload de arquivos.
+ */
+class ChatRemoteImpl(
+    private val db: FirebaseFirestore = FirebaseFirestore.getInstance(),
+    private val storage: FirebaseStorage = FirebaseStorage.getInstance()
+) : ChatRemote {
+    /**
+     * Referência à coleção de chats no Firestore
+     */
+    private val collection = db.collection("chats")
+
+    /**
+     * Salva uma nova mensagem em uma sala de chat e atualiza o resumo do chat.
+     * As imagens da mensagem são primeiro enviadas para o Firebase Storage.
+     *
+     * @param salaId O ID do documento da sala de chat.
+     * @param msg O objeto [MensagemDTO] a ser salvo.
+     * @param chatDto O objeto [ChatDTO] com o resumo atualizado a ser salvo (merge).
+     * @return [Result.success] com `true` se a operação for bem-sucedida, [Result.failure] caso contrário.
+     */
+    override suspend fun save(salaId: String, msg: MensagemDTO, chatDto: ChatDTO): Result<Boolean> = coroutineScope {
+        return@coroutineScope try {
+            val downloadUrls = msg.imgUrls.map { uri ->
+                async { uploadImg(msg.autorUid, uri) }
+            }.awaitAll()
+
+            val msgComImagens = msg.copy(imgUrls = downloadUrls)
+
+            collection
+                .document(salaId)
+                .collection("mensagens")
+                .document(msgComImagens.id)
+                .set(msgComImagens)
+                .await()
+
+            collection
+                .document(salaId)
+                .set(chatDto, SetOptions.merge())
+                .await()
+
+            Result.success(true)
+        } catch (e: Exception) {
+            Log.e("ChatFirebaseRepo", "save: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Busca todos os chats em que um usuário participa, em tempo real.
+     * Os chats são ordenados pela última mensagem enviada.
+     *
+     * @param uid O ID do usuário.
+     * @return Um [Flow] que emite uma lista de [ChatDTO] sempre que houver atualizações.
+     */
+    override fun findByUid(uid: String): Flow<List<ChatDTO>> = callbackFlow {
+        val listener = collection
+            .whereArrayContains("visivelPara", uid)
+            .orderBy("ultimoTimestamp", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e("ChatFirebaseRepo", "findByUid: ${error.message}")
+                    close(error)
+                    return@addSnapshotListener
+                }
+
+                if (snapshot != null) {
+                    val chatDTOS = snapshot.documents.mapNotNull { doc ->
+                        doc.toObject(ChatDTO::class.java)?.copy(salaId = doc.id)
+                    }
+                    trySend(chatDTOS)
+                }
+            }
+        awaitClose { listener.remove() }
+    }
+
+    /**
+     * Busca todas as mensagens de uma sala de chat específica, em tempo real.
+     * As mensagens são ordenadas pela data de envio.
+     *
+     * @param salaId O ID da sala de chat.
+     * @return Um [Flow] que emite uma lista de [MensagemDTO] sempre que houver atualizações.
+     */
+    override fun findById(salaId: String): Flow<List<MensagemDTO>> = callbackFlow {
+        val listener = collection
+            .document(salaId)
+            .collection("mensagens")
+            .orderBy("timestamp", Query.Direction.ASCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e("ChatFirebaseRepo", "findById: ${error.message}")
+                    close(error)
+                    return@addSnapshotListener
+                }
+
+                if (snapshot != null) {
+                    val msgs = snapshot.documents.mapNotNull { doc ->
+                        doc.toObject(MensagemDTO::class.java)?.copy(id = doc.id)
+                    }
+                    trySend(msgs)
+                }
+            }
+        awaitClose { listener.remove() }
+    }
+
+    /**
+     * Marca todas as mensagens não lidas de um usuário em uma sala como lidas.
+     *
+     * @param salaId O ID da sala de chat.
+     * @param uid O ID do usuário cujas mensagens não são o alvo (ou seja, o destinatário).
+     * @return [Result.success] com `true` se a operação for bem-sucedida, [Result.failure] caso contrário.
+     */
+    override suspend fun updateMsgsLidasById(salaId: String, uid: String): Result<Boolean> {
+        return try {
+            val msgsRef = collection.document(salaId).collection("mensagens")
+
+            val snapshot = msgsRef
+                .whereEqualTo("autorUid", uid)
+                .whereEqualTo("lido", false)
+                .get()
+                .await()
+
+            if (snapshot.isEmpty) return Result.success(true)
+
+            val batch = db.batch()
+            for (doc in snapshot.documents) batch.update(doc.reference, "lido", true)
+            batch.commit().await()
+
+            Result.success(true)
+        } catch (e: Exception) {
+            Log.e("ChatFirebaseRepo", "updateMsgsLidasById: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Remove uma mensagem específica de uma sala de chat.
+     *
+     * @param salaId O ID da sala de chat.
+     * @param msgId O ID da mensagem a ser removida.
+     * @return [Result.success] com `true` se a operação for bem-sucedida, [Result.failure] caso contrário.
+     */
+    override suspend fun deleteMsgById(salaId: String, msgId: String): Result<Boolean> {
+        return try {
+            collection
+                .document(salaId)
+                .collection("mensagens")
+                .document(msgId)
+                .delete()
+                .await()
+
+            Result.success(true)
+        } catch (e: Exception) {
+            Log.e("ChatFirebaseRepo", "deleteMsgById: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Atualiza o conteúdo de uma mensagem existente.
+     *
+     * @param salaId O ID da sala de chat.
+     * @param msgId O ID da mensagem a ser atualizada.
+     * @param msg O objeto [MensagemDTO] com os novos dados.
+     * @return [Result.success] com `true` se a operação for bem-sucedida, [Result.failure] caso contrário.
+     */
+    override suspend fun updateMsgById(salaId: String, msgId: String, msg: MensagemDTO): Result<Boolean> {
+        return try {
+            collection
+                .document(salaId)
+                .collection("mensagens")
+                .document(msgId)
+                .set(msg, SetOptions.merge())
+                .await()
+
+            Result.success(true)
+        } catch (e: Exception) {
+            Log.e("ChatFirebaseRepo", "updateMsgById: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Remove o usuário da lista de usuarios que podem ver o chat.
+     *
+     * @param salaId O ID da sala.
+     * @param uid O ID do usuário a ser removido.
+     */
+    override suspend fun ocultarChat(salaId: String, uid: String): Result<Boolean> {
+        return try {
+            collection
+                .document(salaId)
+                .update("visivelPara", FieldValue.arrayRemove(uid))
+                .await()
+            Result.success(true)
+        } catch (e: Exception) {
+            Log.e("ChatFirebaseRepo", "ocultarChat: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Faz o upload de uma imagem para o Firebase Storage.
+     *
+     * @param uid O ID do usuário remetente, usado para organizar as imagens.
+     * @param uri A URI da imagem a ser enviada.
+     * @return A URL de download da imagem após o upload.
+     */
+    private suspend fun uploadImg(uid: String, uri: String): String {
+        val filename = "${uid}/${UUID.randomUUID()}.jpg"
+        val ref = storage.reference.child("imgs_msgs/$filename")
+        ref.putFile(uri.toUri()).await()
+        return ref.downloadUrl.await().toString()
+    }
+}

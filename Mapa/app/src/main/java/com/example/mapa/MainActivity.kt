@@ -55,8 +55,6 @@ class MainActivity : ComponentActivity() {
                         // Caso contrário, exibe a tela de autenticação
                         else -> {
                             AuthNav(
-                                authViewModel = authViewModel,
-                                loginState = loginState,
                                 onLoginConcluido = { authViewModel.resetState() }
                             )
                         }

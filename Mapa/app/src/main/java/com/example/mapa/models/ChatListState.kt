@@ -4,7 +4,7 @@ import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
 
 /**
- * Classe que representa o estado da lista de chats
+ * Classe que representa o estado da lista de chats.
  */
 @Parcelize
 data class ChatListState(

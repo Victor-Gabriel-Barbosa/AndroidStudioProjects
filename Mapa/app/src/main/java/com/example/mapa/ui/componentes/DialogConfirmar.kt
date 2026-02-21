@@ -12,7 +12,7 @@ import com.example.mapa.R
 import com.example.mapa.ui.theme.MapaTheme
 
 /**
- * Diálogo de confirmação de ação
+ * Diálogo de confirmação de ação.
  */
 @Composable
 fun DialogConfirmar(
@@ -57,8 +57,8 @@ private fun DialogConfirmarPreview() {
         DialogConfirmar(
             visivel = true,
             titulo = stringResource(R.string.sair_da_conta) + "?",
-            onFechar = { },
-            onConfirmar = { }
+            onFechar = {},
+            onConfirmar = {}
         )
     }
 }

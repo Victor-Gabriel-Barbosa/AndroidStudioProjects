@@ -1,46 +1,43 @@
 package com.example.mapa.ui.telas
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -49,13 +46,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.mapa.R
-import com.example.mapa.data.remote.dto.Chat
+import com.example.mapa.data.remote.dto.ChatDTO
+import com.example.mapa.data.remote.dto.MensagemDTO
+import com.example.mapa.data.remote.dto.UsuarioDTO
 import com.example.mapa.models.ChatItem
 import com.example.mapa.models.ChatListState
-import com.example.mapa.models.Mensagem
-import com.example.mapa.data.remote.dto.Usuario
-import com.example.mapa.ui.componentes.Animacao
+import com.example.mapa.ui.componentes.AnimacaoLottie
 import com.example.mapa.ui.componentes.AvatarImg
+import com.example.mapa.ui.componentes.BarraPesquisa
 import com.example.mapa.ui.componentes.Header
 import com.example.mapa.ui.componentes.OverlayCarregando
 import com.example.mapa.ui.theme.MapaTheme
@@ -67,7 +65,7 @@ import java.util.Locale
 
 @Composable
 fun TelaChatList(
-    onConversa: (String) -> Unit,
+    onChat: (String, String) -> Unit,
     modifier: Modifier = Modifier,
     chatListViewModel: ChatListViewModel = koinViewModel(),
 ) {
@@ -76,8 +74,8 @@ fun TelaChatList(
 
     TelaChatListContent(
         chatState = uiState,
-        onConversa = onConversa,
-        onExcluir = chatListViewModel::excluirConversa,
+        onChat = onChat,
+        onExcluir = chatListViewModel::excluirConversas,
         modifier = modifier
     )
 }
@@ -85,20 +83,25 @@ fun TelaChatList(
 @Composable
 fun TelaChatListContent(
     chatState: ChatListState,
-    onConversa: (String) -> Unit,
-    onExcluir: (String) -> Unit,
-    modifier: Modifier = Modifier
+    onChat: (String, String) -> Unit,
+    onExcluir: (Set<String>) -> Unit,
+    modifier: Modifier = Modifier,
+    onNavPerfil: () -> Unit = {},
 ) {
     // Estado do texto barra de pesquisa
-    var textoPesquisa by rememberSaveable { mutableStateOf("") }
+    var pesquisa by rememberSaveable { mutableStateOf("") }
+
+    // Estado para armazenar os IDs das salas selecionadas
+    var selecionados by rememberSaveable { mutableStateOf(emptySet<String>()) }
+    val modoSelecao = selecionados.isNotEmpty()
 
     // Filtra os chats com base na pesquisa
-    val chatsFiltrados = rememberSaveable(chatState.chats, textoPesquisa) {
-        if (textoPesquisa.isBlank()) chatState.chats
+    val chatsFiltrados = rememberSaveable(chatState.chats, pesquisa) {
+        if (pesquisa.isBlank()) chatState.chats
         else {
             chatState.chats.filter { item ->
-                item.contato?.nome?.contains(textoPesquisa, ignoreCase = true) == true ||
-                        item.chat.ultimaMsg?.texto?.contains(textoPesquisa, ignoreCase = true) == true
+                item.contato?.nome?.contains(pesquisa, ignoreCase = true) == true ||
+                        item.chatDto.ultimaMsg?.texto?.contains(pesquisa, ignoreCase = true) == true
             }
         }
     }
@@ -106,45 +109,58 @@ fun TelaChatListContent(
     Column(
         modifier = modifier.fillMaxSize()
     ) {
-        Header(
-            titulo = stringResource(R.string.mensagens),
-            icone = R.drawable.logo,
-            modifier = Modifier.align(Alignment.CenterHorizontally)
-        )
-
-        // Barra de pesquisa
-        if (!chatState.carregando && chatState.erro == null) {
-            OutlinedTextField(
-                value = textoPesquisa,
-                onValueChange = { textoPesquisa = it },
+        if (modoSelecao) {
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                placeholder = { Text(stringResource(R.string.pesquisar_conversa)) },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = stringResource(R.string.pesquisar)
-                    )
-                },
-                trailingIcon = {
-                    if (textoPesquisa.isNotEmpty()) {
-                        IconButton(onClick = { textoPesquisa = "" }) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = stringResource(R.string.limpar_pesquisa)
-                            )
-                        }
+                    .padding(horizontal = 8.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { selecionados = emptySet() }) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = stringResource(R.string.cancelar_selecao),
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
                     }
-                },
-                shape = MaterialTheme.shapes.extraLarge,
-                singleLine = true,
-                colors = TextFieldDefaults.colors(
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedContainerColor = MaterialTheme.colorScheme.surface
-                )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Text(
+                        text = "${selecionados.size}",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                IconButton(onClick = {
+                    onExcluir(selecionados)
+                    selecionados = emptySet()
+                }) {
+                    Icon(
+                        imageVector = Icons.Outlined.Delete,
+                        contentDescription = stringResource(R.string.excluir_selecionados),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+        } else {
+            Header(
+                titulo = stringResource(R.string.mensagens),
+                icone = R.drawable.logo,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
             )
         }
+
+        BarraPesquisa(
+            onPesquisa = { pesquisa = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 8.dp)
+        )
 
         // Gerenciamento dos estados de UI
         when {
@@ -179,13 +195,13 @@ fun TelaChatListContent(
             }
 
             // Estado de lista vazia (Sem nenhuma conversa na conta)
-            chatsFiltrados.isEmpty() && textoPesquisa.isBlank() -> {
+            chatsFiltrados.isEmpty() && pesquisa.isBlank() -> {
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    Animacao(
+                    AnimacaoLottie(
                         animacao = R.raw.globo_animacao,
                         modifier = Modifier.size(200.dp)
                     )
@@ -199,14 +215,14 @@ fun TelaChatListContent(
             }
 
             // Se a busca não retornou nada (mas existem conversas na conta)
-            chatsFiltrados.isEmpty() && textoPesquisa.isNotEmpty() -> {
+            chatsFiltrados.isEmpty() && pesquisa.isNotEmpty() -> {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(top = 32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Animacao(
+                    AnimacaoLottie(
                         animacao = R.raw.globo_animacao,
                         modifier = Modifier.size(200.dp)
                     )
@@ -224,54 +240,23 @@ fun TelaChatListContent(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 16.dp)
                 ) {
-                    itemsIndexed(
+                    items(
                         items = chatsFiltrados,
-                        key = { _, item -> item.chat.salaId }
-                    ) { index, item ->
-                        val dismissState = rememberSwipeToDismissBoxState()
+                        key = { item -> item.chatDto.salaId }
+                    ) { item ->
+                        val selecionado = selecionados.contains(item.chatDto.salaId)
 
-                        // Reage à mudança de estado
-                        LaunchedEffect(dismissState.currentValue) {
-                            if (dismissState.currentValue == SwipeToDismissBoxValue.EndToStart) onExcluir(item.chat.salaId)
-                        }
-
-                        val itemShape = when {
-                            chatsFiltrados.size == 1 -> RoundedCornerShape(24.dp)
-                            index == 0 -> RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-                            index == chatsFiltrados.lastIndex -> RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
-                            else -> RectangleShape
-                        }
-
-                        SwipeToDismissBox(
-                            state = dismissState,
-                            enableDismissFromStartToEnd = false,
-                            backgroundContent = {
-                                val color = MaterialTheme.colorScheme.errorContainer
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(itemShape)
-                                        .background(color)
-                                        .padding(horizontal = 24.dp),
-                                    contentAlignment = Alignment.CenterEnd
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Delete,
-                                        contentDescription = "Excluir",
-                                        tint = MaterialTheme.colorScheme.onErrorContainer
-                                    )
-                                }
+                        ConversaItem(
+                            chatItem = item,
+                            selecionado = selecionado,
+                            onClick = {
+                                if (modoSelecao) selecionados = if (selecionado) selecionados - item.chatDto.salaId else selecionados + item.chatDto.salaId
+                                else if (item.contato?.uid?.isNotEmpty() == true) onChat(item.contato.uid, item.chatDto.salaId)
                             },
-                            content = {
-                                ConversaItem(
-                                    chatItem = item,
-                                    onClick = {
-                                        if (item.contato?.uid?.isNotEmpty() == true) onConversa(item.contato.uid)
-                                    },
-                                    modifier = Modifier.clip(itemShape)
-                                )
+                            onLongClick = {
+                                if (!modoSelecao) selecionados = selecionados + item.chatDto.salaId
+                                else selecionados = if (selecionado) selecionados - item.chatDto.salaId else selecionados + item.chatDto.salaId
                             }
                         )
                     }
@@ -284,41 +269,80 @@ fun TelaChatListContent(
 @Composable
 fun ConversaItem(
     chatItem: ChatItem,
+    selecionado: Boolean,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val background = if (selecionado) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+    else Color.Transparent
+
     ListItem(
-        modifier = modifier.clickable { onClick() },
+        modifier = modifier
+            .background(background)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         tonalElevation = 4.dp,
         leadingContent = {
-            AvatarImg(
-                foto = chatItem.contato?.foto,
-                modifier = Modifier.size(48.dp)
-            )
+            Box {
+                AvatarImg(
+                    foto = chatItem.contato?.foto,
+                    modifier = Modifier.size(48.dp)
+                )
+
+                if (selecionado) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = stringResource(R.string.selecionado),
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .background(MaterialTheme.colorScheme.surface, CircleShape)
+                            .size(20.dp)
+                    )
+                }
+            }
         },
         headlineContent = {
-            Text(
-                text = chatItem.contato?.nome ?: stringResource(R.string.usuario_desconhecido),
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = chatItem.contato?.nome ?: stringResource(R.string.usuario_desconhecido),
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Spacer(Modifier.width(8.dp))
+
+                Text(
+                    text = chatItem.contato?.notaMedia.toString(),
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1
+                )
+            }
         },
         supportingContent = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                if (chatItem.chat.ultimaMsg?.autorUid == chatItem.contato?.uid) {
+                if (chatItem.chatDto.ultimaMsg?.autorUid == chatItem.contato?.uid) {
                     Icon(
-                        imageVector = if (chatItem.chat.ultimaMsg?.lido == true) Icons.Default.DoneAll else Icons.Default.Done,
-                        contentDescription = if (chatItem.chat.ultimaMsg?.lido == true) stringResource(R.string.lido) else stringResource(R.string.enviado),
-                        tint = if (chatItem.chat.ultimaMsg?.lido == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+                        imageVector = if (chatItem.chatDto.ultimaMsg?.lido == true) Icons.Default.DoneAll else Icons.Default.Done,
+                        contentDescription = if (chatItem.chatDto.ultimaMsg?.lido == true) stringResource(
+                            R.string.lido
+                        ) else stringResource(R.string.enviado),
+                        tint = if (chatItem.chatDto.ultimaMsg?.lido == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
                         modifier = Modifier.size(14.dp)
                     )
                 }
 
-                if (chatItem.chat.ultimaMsg?.imgUrls?.isNotEmpty() == true) {
+                if (chatItem.chatDto.ultimaMsg?.imgUrls?.isNotEmpty() == true) {
                     Icon(
                         imageVector = Icons.Default.Image,
                         contentDescription = stringResource(R.string.imagem),
@@ -328,8 +352,11 @@ fun ConversaItem(
 
                 Text(
                     text = when {
-                        chatItem.chat.ultimaMsg?.texto?.isNotBlank() == true -> chatItem.chat.ultimaMsg.texto
-                        chatItem.chat.ultimaMsg?.imgUrls?.isNotEmpty() == true -> stringResource(R.string.foto)
+                        chatItem.chatDto.ultimaMsg?.texto?.isNotBlank() == true -> chatItem.chatDto.ultimaMsg.texto
+                        chatItem.chatDto.ultimaMsg?.imgUrls?.isNotEmpty() == true -> stringResource(
+                            R.string.foto
+                        )
+
                         else -> ""
                     },
                     maxLines = 1,
@@ -339,7 +366,7 @@ fun ConversaItem(
             }
         },
         trailingContent = {
-            val data = Date(chatItem.chat.ultimaMsg?.timestamp ?: 0)
+            val data = Date(chatItem.chatDto.ultimaMsg?.timestamp ?: 0)
             val fmt = SimpleDateFormat("HH:mm", Locale.getDefault())
 
             Text(
@@ -360,16 +387,22 @@ fun TelaChatListContentPreview() {
                 erro = null,
                 chats = listOf(
                     ChatItem(
-                        chat = Chat(salaId = "1", ultimaMsg = Mensagem(texto = "Olá, tudo bem?")),
-                        contato = Usuario(nome = "João")
+                        chatDto = ChatDTO(
+                            salaId = "1",
+                            ultimaMsg = MensagemDTO(texto = "Olá, tudo bem?")
+                        ),
+                        contato = UsuarioDTO(nome = "João", notaMedia = 4.4)
                     ),
                     ChatItem(
-                        chat = Chat(salaId = "2", ultimaMsg = Mensagem(texto = "Como vai?")),
-                        contato = Usuario(nome = "Maria")
+                        chatDto = ChatDTO(
+                            salaId = "2",
+                            ultimaMsg = MensagemDTO(texto = "Como vai?")
+                        ),
+                        contato = UsuarioDTO(nome = "Maria", notaMedia = 5.0)
                     )
                 )
             ),
-            onConversa = {},
+            onChat = { _, _ -> },
             onExcluir = {}
         )
     }

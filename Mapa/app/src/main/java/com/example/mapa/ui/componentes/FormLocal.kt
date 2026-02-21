@@ -58,10 +58,11 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.mapa.R
-import com.example.mapa.data.remote.dto.Local
+import com.example.mapa.data.remote.dto.LocalDTO
 import com.example.mapa.models.TipoLocal
 import com.example.mapa.ui.theme.MapaTheme
 import com.example.mapa.utils.criarUriParaFoto
+import com.example.mapa.utils.reqLabel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -78,9 +79,9 @@ import java.util.TimeZone
  * @param titulo O título a ser exibido no cabeçalho do formulário.
  * @param carregando Indica se o estado de carregamento deve ser exibido no botão de salvar.
  * @param onRaioChange Callback invocado quando o valor do slider de raio é alterado.
- * @param localInicial O objeto [Local] com os dados iniciais para popular o formulário.
+ * @param localDTOInicial O objeto [LocalDTO] com os dados iniciais para popular o formulário.
  * @param onSalvar Callback invocado quando o usuário clica no botão "Salvar",
- * passando o objeto [Local] atualizado com os dados do formulário.
+ * passando o objeto [LocalDTO] atualizado com os dados do formulário.
  * @param onFechar Callback invocado para fechar o formulário (botão de fechar ou cancelar).
  * @param modifier O [Modifier] a ser aplicado ao contêiner principal do formulário.
  */
@@ -90,24 +91,24 @@ fun FormLocal(
     titulo: String,
     carregando: Boolean,
     onRaioChange: (Double) -> Unit,
-    localInicial: Local,
-    onSalvar: (Local) -> Unit,
+    localDTOInicial: LocalDTO,
+    onSalvar: (LocalDTO) -> Unit,
     onFechar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
 
     // Variáveis de estado para os campos do formulário
-    var nome by rememberSaveable { mutableStateOf(localInicial.nome) }
-    var tipoSelecionado by rememberSaveable { mutableStateOf(TipoLocal.fromId(localInicial.tipo)) }
-    var descricao by rememberSaveable { mutableStateOf(localInicial.descricao) }
-    var raio by rememberSaveable { mutableDoubleStateOf(localInicial.raio) }
-    var imgs by rememberSaveable { mutableStateOf(localInicial.imgUrls) }
+    var nome by rememberSaveable { mutableStateOf(localDTOInicial.nome) }
+    var tipoSelecionado by rememberSaveable { mutableStateOf(TipoLocal.fromId(localDTOInicial.tipo)) }
+    var descricao by rememberSaveable { mutableStateOf(localDTOInicial.descricao) }
+    var raio by rememberSaveable { mutableDoubleStateOf(localDTOInicial.raio) }
+    var imgs by rememberSaveable { mutableStateOf(localDTOInicial.imgUrls) }
     var uriTemp by rememberSaveable { mutableStateOf<Uri?>(null) }
 
     // Estado do DatePicker
     val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = localInicial.data?.time ?: System.currentTimeMillis()
+        initialSelectedDateMillis = localDTOInicial.data?.time ?: System.currentTimeMillis()
     )
     var datePicker by rememberSaveable { mutableStateOf(false) }
 
@@ -206,7 +207,7 @@ fun FormLocal(
             OutlinedTextField(
                 value = nome,
                 onValueChange = { nome = it },
-                label = { Text(stringResource(R.string.nome) + '*') },
+                label = { Text(stringResource(R.string.nome).reqLabel()) },
                 shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
@@ -260,7 +261,7 @@ fun FormLocal(
             // Campo de data
             OutlinedTextField(
                 value = data,
-                onValueChange = { },
+                onValueChange = {},
                 label = { Text(stringResource(R.string.data)) },
                 shape = MaterialTheme.shapes.medium,
                 readOnly = true,
@@ -406,11 +407,11 @@ fun FormLocal(
                 Button(
                     onClick = {
                         onSalvar(
-                            localInicial.copy(
-                                nome = nome,
+                            localDTOInicial.copy(
+                                nome = nome.trim(),
                                 tipo = tipoSelecionado.id,
                                 data = datePickerState.selectedDateMillis?.let { Date(it) },
-                                descricao = descricao,
+                                descricao = descricao.trim(),
                                 raio = raio,
                                 imgUrls = imgs
                             )
@@ -437,7 +438,7 @@ private fun FormLocalPreview() {
     MapaTheme {
         FormLocal(
             titulo = stringResource(R.string.adicionar_novo_local),
-            localInicial = Local(
+            localDTOInicial = LocalDTO(
                 id = "123",
                 uid = "456",
                 latitude = 0.0,
@@ -447,9 +448,9 @@ private fun FormLocalPreview() {
                 imgUrls = listOf()
             ),
             carregando = true,
-            onRaioChange = { },
+            onRaioChange = {},
             onSalvar = { _ -> },
-            onFechar = { }
+            onFechar = {}
         )
     }
 }

@@ -2,8 +2,8 @@ package com.example.mapa.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.mapa.data.remote.AuthRepository
-import com.example.mapa.data.remote.dto.Local
+import com.example.mapa.data.remote.source.AuthRemote
+import com.example.mapa.data.remote.dto.LocalDTO
 import com.example.mapa.data.repository.LocalRepository
 import com.example.mapa.models.LocalState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -17,16 +17,17 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 /**
  * ViewModel para gerenciar locais salvos.
  *
  * @property localRepo O repositório para operações de locais.
- * @property authRepository O repositório para operações de autenticação.
+ * @property authRemote O repositório para operações de autenticação.
  */
 class LocalViewModel(
     private val localRepo: LocalRepository,
-    authRepository: AuthRepository
+    authRemote: AuthRemote
 ) : ViewModel() {
     /**
      * Estado de carregamento.
@@ -34,24 +35,24 @@ class LocalViewModel(
     private val _carregando = MutableStateFlow(false)
 
     /**
-     * Canal para enviar mensagens de Snackbar para a UI.
+     * Canal para enviar mensagens de eventos para a UI.
      */
-    private val _mensagens = Channel<String>(Channel.BUFFERED)
-    val mensagens = _mensagens.receiveAsFlow()
+    private val _canal = Channel<String>(Channel.BUFFERED)
+    val canal = _canal.receiveAsFlow()
 
     /**
      * Fluxo de todos os locais.
      */
-    private val locaisFlow = localRepo.getLocais()
+    private val locaisFlow = localRepo.carregarLocais()
 
     /**
      * Fluxo de locais do usuário.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val locaisUsuarioFlow = authRepository.usuarioState
+    private val locaisUsuarioFlow = authRemote.usuarioDTOState
         .flatMapLatest { usuario ->
             if (usuario?.uid.isNullOrBlank()) flowOf(emptyList())
-            else localRepo.getLocaisUsuario(usuario.uid)
+            else localRepo.carregarLocaisUsuario(usuario.uid)
         }
 
     /**
@@ -76,15 +77,15 @@ class LocalViewModel(
     /**
      * Adiciona um novo local ao repositório.
      *
-     * @param local O local a ser adicionado.
+     * @param localDto O local a ser adicionado.
      */
-    fun adicionarLocal(local: Local) {
+    fun adicionarLocal(localDto: LocalDTO) {
         viewModelScope.launch {
             _carregando.value = true
 
-            localRepo.salvarLocal(local)
-                .onSuccess { _mensagens.send("Local salvo com sucesso!") }
-                .onFailure { _mensagens.send("Erro ao salvar: ${it.message}") }
+            localRepo.salvarLocal(localDto.copy(id = UUID.randomUUID().toString()))
+                .onSuccess { _canal.send("Local salvo com sucesso!") }
+                .onFailure { _canal.send("Erro ao salvar: ${it.message}") }
 
             _carregando.value = false
         }
@@ -93,18 +94,18 @@ class LocalViewModel(
     /**
      * Edita um local existente no repositório.
      *
-     * @param local O local a ser atualizado.
+     * @param localDto O local a ser atualizado.
      */
-    fun editarLocal(local: Local) {
+    fun editarLocal(localDto: LocalDTO) {
         viewModelScope.launch {
             _carregando.value = true
 
-            localRepo.atualizarLocal(local)
+            localRepo.atualizarLocal(localDto)
                 .onSuccess {
-                    _mensagens.send("Local atualizado com sucesso!")
+                    _canal.send("Local atualizado com sucesso!")
                 }
                 .onFailure { e ->
-                    _mensagens.send("Salvo no dispositivo. Sincronização pendente: ${e.message}")
+                    _canal.send("Salvo no dispositivo. Sincronização pendente: ${e.message}")
                 }
 
             _carregando.value = false
@@ -121,8 +122,8 @@ class LocalViewModel(
             _carregando.value = true
 
             localRepo.deletarLocal(id)
-                .onSuccess { _mensagens.send("Local removido!") }
-                .onFailure { _mensagens.send("Erro ao remover.") }
+                .onSuccess { _canal.send("Local removido!") }
+                .onFailure { _canal.send("Erro ao remover.") }
 
             _carregando.value = false
         }

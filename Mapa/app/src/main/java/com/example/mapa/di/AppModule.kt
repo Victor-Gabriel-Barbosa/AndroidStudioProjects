@@ -2,14 +2,15 @@ package com.example.mapa.di
 
 import androidx.room.Room
 import com.example.mapa.data.local.AppDatabase
-import com.example.mapa.data.remote.AuthRepositoryImpl
-import com.example.mapa.data.remote.AuthRepository
-import com.example.mapa.data.remote.ChatRepositoryImpl
-import com.example.mapa.data.remote.ChatRepository
-import com.example.mapa.data.remote.LocalRepositoryImpl
-import com.example.mapa.data.remote.LocalRepository
-import com.example.mapa.data.remote.UsuarioRepositoryImpl
-import com.example.mapa.data.remote.UsuarioRepository
+import com.example.mapa.data.remote.source.AuthRemote
+import com.example.mapa.data.remote.source.AuthRemoteImpl
+import com.example.mapa.data.remote.source.ChatRemote
+import com.example.mapa.data.remote.source.ChatRemoteImpl
+import com.example.mapa.data.remote.source.LocalRemote
+import com.example.mapa.data.remote.source.LocalRemoteImpl
+import com.example.mapa.data.remote.source.UsuarioRemote
+import com.example.mapa.data.remote.source.UsuarioRemoteImpl
+import com.example.mapa.data.repository.ChatRepository
 import com.example.mapa.data.repository.LocalRepository
 import com.example.mapa.data.repository.UsuarioRepository
 import com.example.mapa.viewmodels.AuthViewModel
@@ -25,10 +26,12 @@ import org.koin.dsl.module
 
 // Configuração do módulo de dependências do Koin
 val appModule = module {
+    // Firebase
     single { FirebaseAuth.getInstance() }
     single { FirebaseFirestore.getInstance() }
     single { FirebaseStorage.getInstance() }
 
+    // Room
     single {
         Room.databaseBuilder(
             androidContext(),
@@ -38,34 +41,26 @@ val appModule = module {
             .fallbackToDestructiveMigration()
             .build()
     }
+
+    // DAOs
     single { get<AppDatabase>().usuarioDao() }
     single { get<AppDatabase>().localDao() }
+    single { get<AppDatabase>().chatDao() }
 
-    // Repositórios
-    single<AuthRepository> { AuthRepositoryImpl(get()) }
-    single<LocalRepository> { LocalRepositoryImpl(get(), get()) }
-    single<UsuarioRepository> { UsuarioRepositoryImpl(get(), get()) }
-    single<LocalRepository> { LocalRepositoryImpl() }
-    single<ChatRepository> { ChatRepositoryImpl(get(), get()) }
+    // Remotes
+    single<AuthRemote> { AuthRemoteImpl(get()) }
+    single<UsuarioRemote> { UsuarioRemoteImpl(get(), get()) }
+    single<LocalRemote> { LocalRemoteImpl(get(), get()) }
+    single<ChatRemote> { ChatRemoteImpl(get(), get()) }
 
-    single {
-        UsuarioRepository(
-            authRepository = get(),
-            usuarioRepository = get(),
-            usuarioDao = get()
-        )
-    }
-
-    single {
-        LocalRepository(
-            remoteRepo = get(),
-            localDao = get()
-        )
-    }
+    // Repositories
+    single { UsuarioRepository(get(), get(),  get()) }
+    single { LocalRepository(get(), get()) }
+    single { ChatRepository(get(), get()) }
 
     // ViewModels
     viewModel { AuthViewModel(get(), get()) }
     viewModel { LocalViewModel(get(), get()) }
-    viewModel { ChatViewModel(get(), get(), get()) }
+    viewModel { ChatViewModel(get(), get(), get(), get()) }
     viewModel { ChatListViewModel(get(), get(), get()) }
 }

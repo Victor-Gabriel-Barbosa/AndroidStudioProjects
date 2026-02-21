@@ -18,7 +18,7 @@ import com.example.mapa.R
 import com.example.mapa.ui.theme.MapaTheme
 
 /**
- * Diálogo de edição de texto
+ * Diálogo de edição de texto.
  */
 @Composable
 fun DialogEditar(
@@ -34,15 +34,15 @@ fun DialogEditar(
 ) {
     if (!visivel) return
 
-    var texto by rememberSaveable(textoInicial) { mutableStateOf(textoInicial) }
+    var nome by rememberSaveable(textoInicial) { mutableStateOf(textoInicial) }
 
     AlertDialog(
         onDismissRequest = onFechar,
         title = { Text(text = titulo) },
         text = {
             OutlinedTextField(
-                value = texto,
-                onValueChange = { texto = it },
+                value = nome,
+                onValueChange = { nome = it },
                 label = { Text(label) },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -50,10 +50,10 @@ fun DialogEditar(
         confirmButton = {
             Button(
                 onClick = {
-                    if (texto.isNotBlank()) onConfirmar(texto.trim())
+                    if (nome.isNotBlank()) onConfirmar(nome.trim())
                     onFechar()
                 },
-                enabled = texto.isNotBlank()
+                enabled = nome.isNotBlank()
             ) {
                 Text(textoConfirmar)
             }

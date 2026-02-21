@@ -41,14 +41,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.mapa.R
-import com.example.mapa.data.remote.dto.Local
+import com.example.mapa.data.remote.dto.LocalDTO
 import com.example.mapa.ui.theme.MapaTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 /**
- * Componente que exibe os detalhes e informações de um [Local] específico.
+ * Componente que exibe os detalhes e informações de um [LocalDTO] específico.
  *
  * Mostra informações como nome, tipo, data, descrição e raio.
  * Apresenta um carrossel de imagens, se houver.
@@ -56,7 +56,7 @@ import java.util.Locale
  * - Se for o criador: botões para "Excluir" e "Editar".
  * - Se não for o criador: botões para "Cancelar" e "Conversar" (iniciar chat).
  *
- * @param local O objeto [Local] cujos detalhes serão exibidos.
+ * @param localDto O objeto [LocalDTO] cujos detalhes serão exibidos.
  * @param usuarioUid O UID do usuário logado, para verificar se ele é o criador do local.
  * @param onFechar Callback para fechar a visualização dos detalhes.
  * @param onExcluir Callback para solicitar a exclusão do local, passando o ID do local.
@@ -65,16 +65,16 @@ import java.util.Locale
  */
 @Composable
 fun InfoLocal(
-    local: Local,
+    localDto: LocalDTO,
     usuarioUid: String?,
     onFechar: () -> Unit,
     onExcluir: (String) -> Unit,
     onEditar: () -> Unit,
-    onChat: (String) -> Unit
+    onChat: (String, String) -> Unit
 ) {
     // Formata a data para exibição
-    val data = remember(local.data) {
-        local.data?.let {
+    val data = remember(localDto.data) {
+        localDto.data?.let {
             SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it)
         }
     }
@@ -119,14 +119,14 @@ fun InfoLocal(
         ) {
             // Imagens/fotos
             CarrosselImgs(
-                imgs = local.imgUrls,
+                imgs = localDto.imgUrls,
                 modifier = Modifier.fillMaxWidth()
             )
 
             // Nome
             ListItem(
                 headlineContent = {
-                    Text(local.nome, fontWeight = FontWeight.SemiBold)
+                    Text(localDto.nome, fontWeight = FontWeight.SemiBold)
                 },
                 overlineContent = {
                     Text(stringResource(R.string.o_que_foi_perdido))
@@ -145,7 +145,7 @@ fun InfoLocal(
             ListItem(
                 headlineContent = {
                     Text(
-                        text = local.tipo,
+                        text = localDto.tipo,
                         fontWeight = FontWeight.SemiBold
                     )
                 },
@@ -185,7 +185,7 @@ fun InfoLocal(
             ListItem(
                 headlineContent = {
                     Text(
-                        text = local.descricao,
+                        text = localDto.descricao,
                         maxLines = 5,
                         overflow = TextOverflow.Ellipsis,
                         fontWeight = FontWeight.SemiBold
@@ -208,7 +208,7 @@ fun InfoLocal(
             ListItem(
                 headlineContent = {
                     Text(
-                        text = stringResource(R.string.metros, local.raio.toInt()),
+                        text = stringResource(R.string.metros, localDto.raio.toInt()),
                         fontWeight = FontWeight.SemiBold
                     )
                 },
@@ -231,10 +231,10 @@ fun InfoLocal(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 // Verifica se o usuário é o criador do local
-                if (local.uid == usuarioUid) {
+                if (localDto.uid == usuarioUid) {
                     // (Editar/Excluir)
                     Button(
-                        onClick = { local.id.let(onExcluir) },
+                        onClick = { localDto.id.let(onExcluir) },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.errorContainer,
                             contentColor = MaterialTheme.colorScheme.onErrorContainer
@@ -273,7 +273,7 @@ fun InfoLocal(
 
                     Button(
                         onClick = {
-                            onChat(local.uid)
+                            onChat(localDto.uid, localDto.id)
                         },
                         modifier = Modifier.weight(1f)
                     ) {
@@ -296,7 +296,7 @@ fun InfoLocal(
 private fun InfoLocalPreview() {
     MapaTheme {
         InfoLocal(
-            local = Local(
+            localDto = LocalDTO(
                 id = "123",
                 uid = "456",
                 latitude = 0.0,
@@ -309,10 +309,10 @@ private fun InfoLocalPreview() {
                 imgUrls = listOf()
             ),
             usuarioUid = "456",
-            onFechar = { },
-            onExcluir = { },
-            onEditar = { },
-            onChat = { }
+            onFechar = {},
+            onExcluir = {},
+            onEditar = {},
+            onChat = { _, _ -> }
         )
     }
 }

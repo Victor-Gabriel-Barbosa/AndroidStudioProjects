@@ -1,7 +1,7 @@
 package com.example.mapa.models
 
 /**
- * Classe que representa o estado de autenticação
+ * Classe que representa o estado de autenticação.
  */
 sealed class LoginState {
     data object Parado : LoginState()

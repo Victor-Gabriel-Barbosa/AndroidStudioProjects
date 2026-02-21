@@ -5,26 +5,30 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.PlainTooltip
@@ -43,23 +47,26 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.mapa.R
-import com.example.mapa.data.remote.dto.Local
+import com.example.mapa.data.remote.dto.LocalDTO
 import com.example.mapa.models.LocalState
-import com.example.mapa.ui.componentes.Animacao
+import com.example.mapa.ui.componentes.AnimacaoLottie
+import com.example.mapa.ui.componentes.BarraPesquisa
 import com.example.mapa.ui.componentes.DialogExcluir
 import com.example.mapa.ui.componentes.FormLocal
 import com.example.mapa.ui.componentes.Header
+import com.example.mapa.ui.componentes.OverlayCarregando
 import com.example.mapa.ui.theme.MapaTheme
 import com.example.mapa.viewmodels.LocalViewModel
 import org.koin.androidx.compose.koinViewModel
@@ -75,9 +82,9 @@ fun TelaSalvos(
     // Observáveis do ViewModel
     val uiState by localViewModel.uiState.collectAsStateWithLifecycle()
 
-    // Feedback visual (Toasts) vindo do ViewModel
+    // Feedback visual (eventos) vindo do ViewModel
     LaunchedEffect(Unit) {
-        localViewModel.mensagens.collect { msg ->
+        localViewModel.canal.collect { msg ->
             Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
         }
     }
@@ -95,14 +102,28 @@ fun TelaSalvos(
 fun TelaSalvosContent(
     modifier: Modifier = Modifier,
     localState: LocalState,
-    onEditarLocal: (Local) -> Unit,
+    onEditarLocal: (LocalDTO) -> Unit,
     onRemoverLocal: (String) -> Unit,
 ) {
     // Estados de UI locais (controles de diálogo, edição, etc)
-    var localSelecionado by rememberSaveable { mutableStateOf<Local?>(null) }
+    var localSelecionado by rememberSaveable { mutableStateOf<LocalDTO?>(null) }
     var editando by rememberSaveable { mutableStateOf(false) }
     var mostrarDialogExcluir by rememberSaveable { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    // Estado do texto barra de pesquisa
+    var pesquisa by rememberSaveable { mutableStateOf("") }
+
+    // Filtra os locais com base na pesquisa
+    val locaisFiltrados = rememberSaveable(localState.locaisUsuario, pesquisa) {
+        if (pesquisa.isBlank()) localState.locaisUsuario
+        else {
+            localState.locaisUsuario.filter { item ->
+                item.nome.contains(pesquisa, ignoreCase = true) ||
+                        item.descricao.contains(pesquisa, ignoreCase = true)
+            }
+        }
+    }
 
     // Diálogo de confirmação de exclusão
     DialogExcluir(
@@ -132,48 +153,99 @@ fun TelaSalvosContent(
             modifier = Modifier.align(Alignment.CenterHorizontally)
         )
 
-        if (localState.locaisUsuario.isEmpty()) {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Animacao(
-                    animacao = R.raw.mapa_animado,
-                    modifier = Modifier.size(200.dp)
-                )
+        BarraPesquisa(
+            onPesquisa = { pesquisa = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 8.dp)
+        )
 
-                Text(text = stringResource(R.string.nenhum_local_salvo))
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
+        // Gerenciamento dos estados de UI
+        when {
+            // Estado de carregamento
+            localState.carregando -> OverlayCarregando()
+
+            // Estado de erro
+            localState.erro != null -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
-                itemsIndexed(
-                    items = localState.locaisUsuario,
-                    key = { _, local -> local.id }
-                ) { index, item ->
-                    val itemShape = when {
-                        localState.locaisUsuario.size == 1 -> RoundedCornerShape(24.dp)
-                        index == 0 -> RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-                        index == localState.locaisUsuario.lastIndex -> RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
-                        else -> RectangleShape
-                    }
-
-                    LocalItem(
-                        local = item,
-                        onEditClick = {
-                            localSelecionado = item
-                            editando = true
-                        },
-                        onExcluirClick = {
-                            localSelecionado = item
-                            mostrarDialogExcluir = true
-                        },
-                        modifier = Modifier.clip(itemShape)
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = stringResource(R.string.erro),
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(48.dp)
                     )
+                    Text(
+                        text = stringResource(
+                            R.string.ocorreu_um_erro_ao_carregar_as_conversas,
+                            localState.erro
+                        ),
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+            }
+
+            // Estado de lista vazia (Sem nenhum local salvo)
+            locaisFiltrados.isEmpty() && pesquisa.isEmpty() -> {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    AnimacaoLottie(
+                        animacao = R.raw.mapa_animado,
+                        modifier = Modifier.size(200.dp)
+                    )
+
+                    Text(text = stringResource(R.string.nenhum_local_salvo))
+                }
+            }
+
+            // Se a busca não retornou nada (mas existem locais salvos)
+            locaisFiltrados.isEmpty() && pesquisa.isNotEmpty() -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = 32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    AnimacaoLottie(
+                        animacao = R.raw.mapa_animado,
+                        modifier = Modifier.size(200.dp)
+                    )
+
+                    Text(text = stringResource(R.string.nenhum_local_encontrado))
+                }
+            }
+
+            // Estado de sucesso com dados
+            else -> {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(
+                        items = locaisFiltrados,
+                        key = { local -> local.id }
+                    ) { item ->
+                        LocalItem(
+                            localDto = item,
+                            onEditar = {
+                                localSelecionado = item
+                                editando = true
+                            },
+                            onExcluir = {
+                                localSelecionado = item
+                                mostrarDialogExcluir = true
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -206,7 +278,7 @@ fun TelaSalvosContent(
             ) {
                 FormLocal(
                     titulo = stringResource(R.string.editar_local),
-                    localInicial = localSelecionado!!,
+                    localDTOInicial = localSelecionado!!,
                     carregando = localState.carregando,
                     onRaioChange = {},
                     onSalvar = { local ->
@@ -228,13 +300,16 @@ fun TelaSalvosContent(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LocalItem(
-    local: Local,
-    onEditClick: () -> Unit,
-    onExcluirClick: () -> Unit,
+    localDto: LocalDTO,
+    onEditar: () -> Unit,
+    onExcluir: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var expandido by rememberSaveable { mutableStateOf(false) }
+
     ListItem(
         modifier = modifier,
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         tonalElevation = 4.dp,
         leadingContent = {
             Surface(
@@ -243,10 +318,10 @@ fun LocalItem(
                 modifier = Modifier.size(48.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    if (local.imgUrls.isNotEmpty()) {
+                    if (localDto.imgUrls.isNotEmpty()) {
                         AsyncImage(
-                            model = local.imgUrls[0],
-                            contentDescription = local.nome,
+                            model = localDto.imgUrls[0],
+                            contentDescription = localDto.nome,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
                         )
@@ -261,66 +336,73 @@ fun LocalItem(
             }
         },
         headlineContent = {
-                Text(
-                    text = local.nome,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            },
+            Text(
+                text = localDto.nome,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        },
 
         supportingContent = {
             Text(
-                text = "${local.descricao} • ${local.raio.toInt()}m",
+                text = "${localDto.descricao} • ${localDto.raio.toInt()}m",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         },
         trailingContent = {
-            Row {
-                // Botão de edição com dica de uso
-                TooltipBox(
-                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
-                    tooltip = {
-                        PlainTooltip {
-                            Text(stringResource(R.string.editar))
-                        }
-                    },
-                    state = rememberTooltipState()
-                ) {
-                    IconButton(
-                        onClick = onEditClick,
-                        colors = IconButtonDefaults.iconButtonColors(
-                            contentColor = MaterialTheme.colorScheme.primary
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = stringResource(R.string.editar)
-                        )
+            // Botão de edição/exclusão com dica de uso
+            TooltipBox(
+                positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                    TooltipAnchorPosition.Above
+                ),
+                tooltip = {
+                    PlainTooltip {
+                        Text(stringResource(R.string.editar_ou_excluir))
                     }
+                },
+                state = rememberTooltipState()
+            ) {
+                IconButton(
+                    onClick = { expandido = true },
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = stringResource(R.string.opcoes),
+                    )
                 }
 
-                // Botão de exclusão com dica de uso
-                TooltipBox(
-                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
-                    tooltip = {
-                        PlainTooltip {
-                            Text(stringResource(R.string.excluir))
-                        }
-                    },
-                    state = rememberTooltipState()
+                DropdownMenu(
+                    expanded = expandido,
+                    onDismissRequest = { expandido = false },
+                    offset = DpOffset(x = 0.dp, y = 0.dp)
                 ) {
-                    IconButton(
-                        onClick = onExcluirClick,
-                        colors = IconButtonDefaults.iconButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = stringResource(R.string.excluir)
-                        )
-                    }
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.editar)) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = null
+                            )
+                        },
+                        onClick = {
+                            expandido = false
+                            onEditar()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.excluir)) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = null
+                            )
+                        },
+                        onClick = {
+                            expandido = false
+                            onExcluir()
+                        }
+                    )
                 }
             }
         }
@@ -334,7 +416,7 @@ fun TelaSalvosContentPreview() {
         TelaSalvosContent(
             localState = LocalState(
                 locaisUsuario = listOf(
-                    Local(
+                    LocalDTO(
                         id = "1",
                         latitude = -23.550520,
                         longitude = -46.633308,
@@ -342,7 +424,7 @@ fun TelaSalvosContentPreview() {
                         descricao = "Perdi perto da praça",
                         raio = 50.0
                     ),
-                    Local(
+                    LocalDTO(
                         id = "2",
                         latitude = -23.550520,
                         longitude = -46.633308,

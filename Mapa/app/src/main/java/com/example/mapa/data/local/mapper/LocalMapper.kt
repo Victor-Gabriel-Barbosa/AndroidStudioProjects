@@ -1,10 +1,10 @@
 package com.example.mapa.data.local.mapper
 
 import com.example.mapa.data.local.entity.LocalEntity
-import com.example.mapa.data.remote.dto.Local
+import com.example.mapa.data.remote.dto.LocalDTO
 import java.util.Date
 
-fun Local.toEntity() = LocalEntity(
+fun LocalDTO.toEntity() = LocalEntity(
     id = this.id,
     uid = this.uid,
     nome = this.nome,
@@ -14,10 +14,11 @@ fun Local.toEntity() = LocalEntity(
     longitude = this.longitude,
     raio = this.raio,
     data = this.data?.time,
-    imgUrls = this.imgUrls.joinToString(separator = "|")
+    imgUrls = this.imgUrls.joinToString(separator = "|"),
+    entregue = this.entregue
 )
 
-fun LocalEntity.toDomain() = Local(
+fun LocalEntity.toDomain() = LocalDTO(
     id = this.id,
     uid = this.uid,
     nome = this.nome,
@@ -27,5 +28,6 @@ fun LocalEntity.toDomain() = Local(
     longitude = this.longitude,
     raio = this.raio,
     data = this.data?.let { Date(it) },
-    imgUrls = if (this.imgUrls.isBlank()) emptyList() else this.imgUrls.split("|")
+    imgUrls = if (this.imgUrls.isBlank()) emptyList() else this.imgUrls.split("|"),
+    entregue = this.entregue
 )

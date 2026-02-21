@@ -1,7 +1,7 @@
 package com.example.mapa.models
 
 import android.os.Parcelable
-import com.example.mapa.data.remote.dto.Local
+import com.example.mapa.data.remote.dto.LocalDTO
 import kotlinx.parcelize.Parcelize
 
 /**
@@ -9,8 +9,8 @@ import kotlinx.parcelize.Parcelize
  */
 @Parcelize
 data class LocalState(
-    val locais: List<Local> = emptyList(),
-    val locaisUsuario: List<Local> = emptyList(),
+    val locais: List<LocalDTO> = emptyList(),
+    val locaisUsuario: List<LocalDTO> = emptyList(),
     val carregando: Boolean = false,
     val erro: String? = null
 ) : Parcelable

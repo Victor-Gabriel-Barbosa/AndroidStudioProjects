@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.mapa.ui.theme.MapaTheme
 
@@ -19,17 +20,16 @@ import com.example.mapa.ui.theme.MapaTheme
  * preenche toda a tela e exibe uma animação de carregamento no centro.
  */
 @Composable
-fun OverlayCarregando() {
+fun OverlayCarregando(
+    size: Dp = 60.dp,
+) {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
-        AnimacaoCarregando(
-            size = 60.dp,
-            strokeWidth = 8.dp
-        )
+        AnimacaoCarregando(size = size)
     }
 }
 

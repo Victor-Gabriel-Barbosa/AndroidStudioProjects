@@ -37,6 +37,9 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.AttachFile
+import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material.icons.outlined.StarRate
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -47,6 +50,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TooltipAnchorPosition
@@ -77,13 +81,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.mapa.R
+import com.example.mapa.data.remote.dto.MensagemDTO
+import com.example.mapa.data.remote.dto.UsuarioDTO
 import com.example.mapa.models.ChatState
-import com.example.mapa.models.Mensagem
-import com.example.mapa.data.remote.dto.Usuario
 import com.example.mapa.ui.componentes.AnimacaoCarregando
 import com.example.mapa.ui.componentes.AvatarImg
 import com.example.mapa.ui.componentes.BolhaMsg
 import com.example.mapa.ui.componentes.CarrosselImgs
+import com.example.mapa.ui.componentes.DialogAvaliar
 import com.example.mapa.ui.componentes.OverlayCarregando
 import com.example.mapa.ui.theme.MapaTheme
 import com.example.mapa.utils.criarUriParaFoto
@@ -95,19 +100,20 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun TelaChat(
     uid: String,
+    localId: String,
     onVoltar: () -> Unit,
     modifier: Modifier = Modifier,
     chatViewModel: ChatViewModel = koinViewModel()
 ) {
     // Inicializa o ViewModel com o UID do contato
-    LaunchedEffect(uid) {
-        chatViewModel.inicializar(uid)
+    LaunchedEffect(uid, localId) {
+        chatViewModel.inicializar(uid, localId)
     }
 
-    // Feedback visual (Toasts) vindo do ViewModel
+    // Feedback visual (eventos) vindo do ViewModel
     val context = LocalContext.current
     LaunchedEffect(Unit) {
-        chatViewModel.mensagens.collect { msg ->
+        chatViewModel.canal.collect { msg ->
             Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
         }
     }
@@ -121,6 +127,7 @@ fun TelaChat(
         onEnviarMsg = chatViewModel::enviarMsg,
         onEditarMsg = chatViewModel::editarMsg,
         onExcluirMsg = chatViewModel::excluirMsg,
+        onConfirmarEntrega = chatViewModel::avaliarUsuario,
         modifier = modifier
     )
 }
@@ -130,9 +137,10 @@ fun TelaChat(
 fun TelaChatContent(
     chatState: ChatState,
     onVoltar: () -> Unit,
-    onEnviarMsg: (Mensagem) -> Unit,
-    onEditarMsg: (String, Mensagem) -> Unit,
+    onEnviarMsg: (MensagemDTO) -> Unit,
+    onEditarMsg: (String, MensagemDTO) -> Unit,
     onExcluirMsg: (String) -> Unit,
+    onConfirmarEntrega: (Double) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
@@ -145,9 +153,25 @@ fun TelaChatContent(
         derivedStateOf { listState.canScrollForward }
     }
 
+    // Mostra o diálogo de avaliação
+    var mostrarDialogAvaliar by rememberSaveable { mutableStateOf(false) }
+    val avaliou = chatState.contato?.avaliadores?.contains(chatState.contato.uid) == true
+
     // Scroll automático para a última mensagem ao entrar ou receber nova msg
     LaunchedEffect(chatState.msgs.size) {
         if (chatState.msgs.isNotEmpty()) listState.animateScrollToItem(chatState.msgs.lastIndex)
+    }
+
+    chatState.contato?.let { contato ->
+        DialogAvaliar(
+            visivel = mostrarDialogAvaliar,
+            contato = contato,
+            onFechar = { mostrarDialogAvaliar = false },
+            onConfirmar = { nota ->
+                onConfirmarEntrega(nota)
+                mostrarDialogAvaliar = false
+            }
+        )
     }
 
     Scaffold(
@@ -165,13 +189,42 @@ fun TelaChatContent(
                             foto = chatState.contato?.foto,
                             modifier = Modifier.size(40.dp)
                         )
-                        Spacer(Modifier.width(12.dp))
+
+                        Spacer(Modifier.width(8.dp))
+
                         Text(
                             text = chatState.contato?.nome ?: stringResource(R.string.carregando),
                             style = MaterialTheme.typography.titleMedium,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
                         )
+
+                        Spacer(Modifier.width(8.dp))
+
+                        Text(
+                            text = chatState.contato?.notaMedia.toString(),
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1
+                        )
+
+                        Spacer(Modifier.weight(1f))
+
+                        TextButton(
+                            onClick = { mostrarDialogAvaliar = true },
+                            enabled = !avaliou
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.StarRate,
+                                contentDescription = stringResource(R.string.entregue)
+                            )
+
+                            Spacer(Modifier.width(8.dp))
+
+                            Text(
+                                text = stringResource(R.string.avaliar)
+                            )
+                        }
                     }
                 },
                 navigationIcon = {
@@ -183,8 +236,8 @@ fun TelaChatContent(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                    containerColor = MaterialTheme.colorScheme.background,
+                    scrolledContainerColor = MaterialTheme.colorScheme.background
                 )
             )
         }
@@ -295,9 +348,11 @@ fun TelaChatContent(
 @Composable
 fun ChatEntrada(
     carregando: Boolean,
-    onEnviarMsg: (Mensagem) -> Unit
+    onEnviarMsg: (MensagemDTO) -> Unit
 ) {
     val context = LocalContext.current
+
+    // Estados para a entrada de mensagem (texto e imagens)
     var texto by rememberSaveable { mutableStateOf("") }
     var imgs by rememberSaveable { mutableStateOf(listOf<String>()) }
     var uriTemp by rememberSaveable { mutableStateOf<Uri?>(null) }
@@ -305,6 +360,8 @@ fun ChatEntrada(
         contract = ActivityResultContracts.PickMultipleVisualMedia(),
         onResult = { uris -> imgs = imgs + uris.map { it.toString() } }
     )
+
+    // Launcher para tirar foto
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { sucesso ->
@@ -358,7 +415,7 @@ fun ChatEntrada(
                                 )
                             }) {
                                 Icon(
-                                    imageVector = Icons.Default.AttachFile,
+                                    imageVector = Icons.Outlined.AttachFile,
                                     contentDescription = stringResource(R.string.adicionar_imagem)
                                 )
                             }
@@ -380,7 +437,7 @@ fun ChatEntrada(
                                 cameraLauncher.launch(uri)
                             }) {
                                 Icon(
-                                    imageVector = Icons.Default.CameraAlt,
+                                    imageVector = Icons.Outlined.CameraAlt,
                                     contentDescription = stringResource(R.string.tirar_foto)
                                 )
                             }
@@ -402,7 +459,7 @@ fun ChatEntrada(
                                 onClick = {
                                     if (podeEnviar) {
                                         onEnviarMsg(
-                                            Mensagem(
+                                            MensagemDTO(
                                                 texto = texto,
                                                 imgUrls = imgs
                                             )
@@ -443,31 +500,36 @@ fun ChatEntrada(
     }
 }
 
-@Preview(showBackground = true, showSystemUi = true)
+@Preview(showBackground = true)
 @Composable
 fun TelaChatContentPreview() {
     MapaTheme {
-        val mensagem = Mensagem(
+        val mensagemDto = MensagemDTO(
             id = "1",
             texto = "Olá, tudo bem?",
             autorUid = "123",
             timestamp = System.currentTimeMillis()
         )
+
         TelaChatContent(
             chatState = ChatState(
-                msgs = List(16) { mensagem.copy(id = "${it + 1}") },
-                contato = Usuario(
+                msgs = List(16) { mensagemDto.copy(id = "${it + 1}") },
+                contato = UsuarioDTO(
                     uid = "456",
-                    nome = "João",
+                    nome = "João da Silva Medeiros",
                     email = "james.francis.byrnes@example-pet-store.com",
-                    foto = "https://img.freepik.com/vetores-gratis/ilustracao-do-jovem-sorridente_1308-174669.jpg"
+                    foto = "https://img.freepik.com/vetores-gratis/ilustracao-do-jovem-sorridente_1308-174669.jpg",
+                    notaMedia = 4.5,
+                    notaQtd = 10,
+                    avaliadores = listOf("456")
                 ),
                 carregando = false
             ),
             onVoltar = {},
             onEnviarMsg = {},
             onEditarMsg = { _, _ -> },
-            onExcluirMsg = {}
+            onExcluirMsg = {},
+            onConfirmarEntrega = {}
         )
     }
 }

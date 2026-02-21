@@ -9,20 +9,23 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.ui.NavDisplay
 import com.example.mapa.R
 import com.example.mapa.models.LoginState
-import com.example.mapa.ui.componentes.Animacao
+import com.example.mapa.ui.componentes.AnimacaoLottie
 import com.example.mapa.ui.telas.TelaSignIn
 import com.example.mapa.ui.telas.TelaSignUp
 import com.example.mapa.viewmodels.AuthViewModel
+import org.koin.androidx.compose.koinViewModel
 
 /**
  * Lida com o fluxo de autenticação (login e cadastro).
@@ -36,11 +39,20 @@ import com.example.mapa.viewmodels.AuthViewModel
  */
 @Composable
 fun AuthNav(
-    authViewModel: AuthViewModel,
-    loginState: LoginState,
-    onLoginConcluido: () -> Unit
+    onLoginConcluido: () -> Unit,
+    authViewModel: AuthViewModel = koinViewModel()
 ) {
     val context = LocalContext.current
+
+    // Observáveis do ViewModel
+    val loginState by authViewModel.loginState.collectAsStateWithLifecycle()
+
+    // Feedback visual (eventos) vindo do ViewModel
+    LaunchedEffect(Unit) {
+        authViewModel.canal.collect { msg ->
+            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+        }
+    }
 
     // Inicia com a tela de Login
     val backStack = rememberSaveable { mutableStateListOf<Rotas>(Rotas.Login) }
@@ -54,7 +66,7 @@ fun AuthNav(
     LaunchedEffect(loginState) {
         when (loginState) {
             is LoginState.Erro -> {
-                Toast.makeText(context, loginState.mensagem, Toast.LENGTH_LONG).show()
+                Toast.makeText(context, (loginState as LoginState.Erro).mensagem, Toast.LENGTH_LONG).show()
                 authViewModel.resetState()
             }
             is LoginState.Sucesso -> {
@@ -76,9 +88,7 @@ fun AuthNav(
                         onLogin = { email, senha -> authViewModel.login(email, senha) },
                         onGoogleLogin = { cred -> authViewModel.loginWithGoogle(cred) },
                         onNavSignup = {
-                            if (backStack.lastOrNull() != Rotas.Signup) {
-                                backStack.add(Rotas.Signup)
-                            }
+                            if (backStack.lastOrNull() != Rotas.Signup) backStack.add(Rotas.Signup)
                         },
                         loginState = loginState
                     )
@@ -88,9 +98,7 @@ fun AuthNav(
                     TelaSignUp(
                         onSignup = { email, senha -> authViewModel.cadastrar(email, senha) },
                         onNavegarParaLogin = {
-                            if (backStack.size > 1) {
-                                backStack.removeLastOrNull()
-                            }
+                            if (backStack.size > 1) backStack.removeLastOrNull()
                         },
                         loginState = loginState
                     )
@@ -101,7 +109,7 @@ fun AuthNav(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Animacao(
+                        AnimacaoLottie(
                             animacao = R.raw.login_sucesso_animacao,
                             loop = false,
                             velocidade = 3f,

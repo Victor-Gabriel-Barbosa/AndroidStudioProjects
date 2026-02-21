@@ -29,13 +29,12 @@ fun AnimacaoCarregando(
     modifier: Modifier = Modifier,
     size: Dp = 32.dp,
     color: Color = MaterialTheme.colorScheme.tertiary,
-    strokeWidth: Dp = 4.dp,
     trackColor: Color = Color.Transparent
 ) {
     CircularProgressIndicator(
         modifier = modifier.size(size),
         color = color,
-        strokeWidth = strokeWidth,
+        strokeWidth = (size * 0.12f).coerceIn(2.dp, 8.dp),
         trackColor = trackColor,
         strokeCap = StrokeCap.Round
     )

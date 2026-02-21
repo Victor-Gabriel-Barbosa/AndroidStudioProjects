@@ -1,5 +1,6 @@
 package com.example.mapa.viewmodels
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mapa.data.local.mapper.toDomain
@@ -11,21 +12,25 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import com.example.mapa.data.remote.AuthRepository
+import com.example.mapa.data.remote.source.AuthRemote
 import com.example.mapa.models.UsuarioState
 import com.example.mapa.data.repository.UsuarioRepository
+import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.tasks.await
 
 /**
  * ViewModel para gerenciar a autenticação do usuário, incluindo login, cadastro e logout.
  *
- * @property authRepository Repositório para operações de autenticação com Firebase.
- * @property usuarioRepo Repositório para operações de dados do usuário no Firestore.
+ * @property authRemote Repositório para operações de autenticação com Firebase.
+ * @property usuarioRepo Repositório para operações de dados do usuário.
  */
 class AuthViewModel(
-    private val authRepository: AuthRepository,
+    private val authRemote: AuthRemote,
     private val usuarioRepo: UsuarioRepository
 ) : ViewModel() {
     /**
@@ -41,20 +46,26 @@ class AuthViewModel(
     private val _carregandoNome = MutableStateFlow(false)
 
     /**
+     * Canal para enviar mensagens de eventos para a UI.
+     */
+    private val _canal = Channel<String>(Channel.BUFFERED)
+    val canal = _canal.receiveAsFlow()
+
+    /**
      * `Flow` que emite o estado do usuário ativo, combinando dados do Firebase Auth e Firestore.
      * Retorna `null` se não houver usuário logado.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<UsuarioState> = combine(
         usuarioRepo.usuario,
-        authRepository.usuarioState,
+        authRemote.usuarioDTOState,
         _carregandoFoto,
         _carregandoNome
     ) { usuarioLocalEntity, usuarioAuth, carregandoFoto, carregandoNome ->
         val usuarioParaExibir = usuarioLocalEntity?.toDomain() ?: usuarioAuth
 
         UsuarioState(
-            usuario = usuarioParaExibir,
+            usuarioDto = usuarioParaExibir,
             logado = usuarioAuth != null,
             carregandoFoto = carregandoFoto,
             carregandoNome = carregandoNome
@@ -76,8 +87,9 @@ class AuthViewModel(
         viewModelScope.launch {
             _loginState.value = LoginState.Carregando
 
-            authRepository.signInWithEmail(email, senha)
+            authRemote.signInWithEmail(email, senha)
                 .onSuccess {
+                    atualizarTokenFCM()
                     _loginState.value = LoginState.Sucesso
                 }
                 .onFailure { error ->
@@ -98,10 +110,13 @@ class AuthViewModel(
         viewModelScope.launch {
             _loginState.value = LoginState.Carregando
 
-            authRepository.signUpWithEmail(email, senha)
+            authRemote.signUpWithEmail(email, senha)
                 .onSuccess {
-                    val usuarioAtual = authRepository.usuarioState.first()
-                    if (usuarioAtual != null) usuarioRepo.updateUsuario(usuarioAtual.copy(email = email))
+                    val usuarioAtual = authRemote.usuarioDTOState.first()
+                    if (usuarioAtual != null) {
+                        val token = try { FirebaseMessaging.getInstance().token.await() } catch(_: Exception) { "" }
+                        usuarioRepo.atualizarUsuario(usuarioAtual.copy(email = email, fcmToken = token))
+                    }
                     _loginState.value = LoginState.Sucesso
                 }
                 .onFailure { error ->
@@ -120,10 +135,13 @@ class AuthViewModel(
     fun loginWithGoogle(credential: AuthCredential) {
         viewModelScope.launch {
             _loginState.value = LoginState.Carregando
-            authRepository.signInWithGoogle(credential)
+            authRemote.signInWithGoogle(credential)
                 .onSuccess {
-                    val usuarioAuth = authRepository.usuarioState.first()
-                    if (usuarioAuth != null) usuarioRepo.updateUsuario(usuarioAuth)
+                    val usuarioAuth = authRemote.usuarioDTOState.first()
+                    if (usuarioAuth != null) {
+                        val token = try { FirebaseMessaging.getInstance().token.await() } catch(e: Exception) { "" }
+                        usuarioRepo.atualizarUsuario(usuarioAuth.copy(fcmToken = token))
+                    }
                     _loginState.value = LoginState.Sucesso
                 }
                 .onFailure { error ->
@@ -136,7 +154,7 @@ class AuthViewModel(
      * Realiza o logout do usuário atual e reseta o estado de login.
      */
     fun logout() {
-        authRepository.signOut()
+        authRemote.signOut()
         _loginState.value = LoginState.Parado
     }
 
@@ -146,11 +164,16 @@ class AuthViewModel(
      * @param foto A nova URL da foto de perfil.
      */
     fun atualizarFoto(foto: String) {
-        val usuarioAtual = uiState.value.usuario ?: return
+        val usuarioAtual = uiState.value.usuarioDto ?: return
 
         viewModelScope.launch {
             _carregandoFoto.value = true
-            usuarioRepo.updateUsuario(usuarioAtual.copy(foto = foto))
+
+            usuarioRepo.atualizarUsuario(usuarioAtual.copy(foto = foto))
+                .onFailure {
+                    _canal.send("Erro ao atualizar foto: ${it.message}")
+                }
+
             _carregandoFoto.value = false
         }
     }
@@ -161,12 +184,36 @@ class AuthViewModel(
      * @param nome O novo nome do usuário.
      */
     fun atualizarNome(nome: String) {
-        val usuarioAtual = uiState.value.usuario ?: return
+        val usuarioAtual = uiState.value.usuarioDto ?: return
 
         viewModelScope.launch {
             _carregandoNome.value = true
-            usuarioRepo.updateUsuario(usuarioAtual.copy(nome = nome))
+
+            usuarioRepo.atualizarUsuario(usuarioAtual.copy(nome = nome))
+                .onFailure {
+                    _canal.send("Erro ao atualizar nome: ${it.message}")
+                }
+
             _carregandoNome.value = false
+        }
+    }
+
+    /**
+     * Obtém o token FCM atual do dispositivo e o salva no perfil do usuário no Firestore.
+     */
+    private fun atualizarTokenFCM() {
+        viewModelScope.launch {
+            try {
+                // Pega o token do dispositivo atual
+                val token = FirebaseMessaging.getInstance().token.await()
+
+                // Pega o usuário logado atualmente
+                val usuarioAtual = authRemote.usuarioDTOState.first()
+
+                if (usuarioAtual != null) usuarioRepo.atualizarUsuario(usuarioAtual.copy(fcmToken = token))
+            } catch (e: Exception) {
+                Log.e("AuthViewModel", "Erro ao atualizar Token FCM: ${e.message}")
+            }
         }
     }
 

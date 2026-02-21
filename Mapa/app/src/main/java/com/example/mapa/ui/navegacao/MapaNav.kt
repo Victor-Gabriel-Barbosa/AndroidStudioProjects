@@ -27,7 +27,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.ui.NavDisplay
-import com.example.mapa.data.remote.dto.Usuario
+import com.example.mapa.data.remote.dto.UsuarioDTO
 import com.example.mapa.models.UsuarioState
 import com.example.mapa.ui.componentes.AvatarImg
 import com.example.mapa.ui.telas.TelaChat
@@ -48,7 +48,7 @@ import org.koin.androidx.compose.koinViewModel
  *
  * @param carregandoFoto Indica se a foto do perfil está sendo carregada/atualizada,
  * para exibir feedback visual na [TelaPerfil].
- * @param usuario O objeto [Usuario] do usuário atualmente logado. Nulo se não houver usuário logado.
+ * @param usuario O objeto [UsuarioDTO] do usuário atualmente logado. Nulo se não houver usuário logado.
  * @param onLogout Callback acionado quando o usuário solicita o logout.
  * @param onEditarFoto Callback acionado quando o usuário edita a foto do perfil.
  * @param onEditarNome Callback acionado quando o usuário edita o nome do perfil.
@@ -70,6 +70,7 @@ fun MapaNav(
         backStack.removeLastOrNull()
     }
 
+    // Conta a quantidade de mensagens não lidas
     val qtdNaoLidas by chatListViewModel.qtdNaoLidas.collectAsStateWithLifecycle()
 
     NavigationSuiteScaffold(
@@ -106,9 +107,9 @@ fun MapaNav(
                         }
 
                         when {
-                            item == AppNav.PERFIL && usuarioState.usuario?.foto != null -> {
+                            item == AppNav.PERFIL && usuarioState.usuarioDto?.foto != null -> {
                                 AvatarImg(
-                                    foto = usuarioState.usuario.foto,
+                                    foto = usuarioState.usuarioDto.foto,
                                     modifier = Modifier
                                         .size(24.dp)
                                         .border(
@@ -154,8 +155,8 @@ fun MapaNav(
                 when (rota) {
                     Rotas.Home -> NavEntry(rota) {
                         TelaHome(
-                            usuario = usuarioState.usuario,
-                            onChat = { uid -> backStack.add(Rotas.ChatDetalhe(uid)) }
+                            usuarioDto = usuarioState.usuarioDto,
+                            onChat = { uid, localId -> backStack.add(Rotas.ChatDetalhe(uid, localId)) }
                         )
                     }
 
@@ -165,13 +166,14 @@ fun MapaNav(
 
                     Rotas.ChatGraph, Rotas.ChatList -> NavEntry(rota) {
                         TelaChatList(
-                            onConversa = { uid -> backStack.add(Rotas.ChatDetalhe(uid)) },
+                            onChat = { uid, localId -> backStack.add(Rotas.ChatDetalhe(uid, localId)) },
                         )
                     }
 
                     is Rotas.ChatDetalhe -> NavEntry(rota) {
                         TelaChat(
                             uid = rota.uid,
+                            localId = rota.localId,
                             onVoltar = { backStack.removeLastOrNull() }
                         )
                     }
@@ -193,7 +195,7 @@ fun MapaPreview() {
     MapaTheme {
         MapaNav(
             usuarioState = UsuarioState(
-                Usuario(
+                UsuarioDTO(
                     uid = "123",
                     nome = "João",
                     email = "william.henry.harrison@example-pet-store.com",

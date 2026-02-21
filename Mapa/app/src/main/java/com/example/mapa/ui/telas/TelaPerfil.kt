@@ -1,5 +1,6 @@
 package com.example.mapa.ui.telas
 
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -31,6 +32,7 @@ import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -38,12 +40,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.mapa.R
-import com.example.mapa.data.remote.dto.Usuario
+import com.example.mapa.data.remote.dto.UsuarioDTO
 import com.example.mapa.models.UsuarioState
 import com.example.mapa.ui.componentes.AnimacaoCarregando
 import com.example.mapa.ui.componentes.AvatarImg
@@ -59,7 +62,17 @@ fun TelaPerfil(
     modifier: Modifier = Modifier,
     authViewModel: AuthViewModel = koinViewModel()
 ) {
+    val context = LocalContext.current
+
+    // Observáveis do ViewModel
     val usuarioState by authViewModel.uiState.collectAsStateWithLifecycle()
+
+    // Feedback visual (eventos) vindo do ViewModel
+    LaunchedEffect(Unit) {
+        authViewModel.canal.collect { msg ->
+            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+        }
+    }
 
     TelaPerfilContent(
         onLogout = authViewModel::logout,
@@ -94,7 +107,7 @@ fun TelaPerfilContent(
     // Dialog de edição de nome
     DialogEditar(
         visivel = mostrarDialogEditar,
-        textoInicial = usuarioState.usuario?.nome ?: "",
+        textoInicial = usuarioState.usuarioDto?.nome ?: "",
         titulo = stringResource(R.string.editar_nome),
         label = stringResource(R.string.nome),
         onFechar = { mostrarDialogEditar = false },
@@ -124,6 +137,13 @@ fun TelaPerfilContent(
             modifier = Modifier.align(Alignment.CenterHorizontally)
         )
 
+        val context = LocalContext.current
+        Button(
+            onClick = { context.deleteDatabase("mapa_database.db") }
+        ) {
+            Text(text = "Apagar banco")
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -138,7 +158,7 @@ fun TelaPerfilContent(
                 // Avatar com feedback de carregamento
                 if (usuarioState.carregandoFoto) AnimacaoCarregando(size = 48.dp)
                 else AvatarImg(
-                    foto = usuarioState.usuario?.foto,
+                    foto = usuarioState.usuarioDto?.foto,
                     modifier = Modifier.size(120.dp)
                 )
 
@@ -183,7 +203,7 @@ fun TelaPerfilContent(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = usuarioState.usuario?.nome ?: stringResource(R.string.usu_rio_desconhecido),
+                    text = usuarioState.usuarioDto?.nome ?: stringResource(R.string.usu_rio_desconhecido),
                     style = MaterialTheme.typography.headlineMedium
                 )
 
@@ -209,7 +229,7 @@ fun TelaPerfilContent(
             }
 
             Text(
-                text = usuarioState.usuario?.email ?: "",
+                text = usuarioState.usuarioDto?.email ?: "",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -232,7 +252,7 @@ fun TelaPerfilContentPreview() {
     MapaTheme {
         TelaPerfilContent(
             usuarioState = UsuarioState(
-                Usuario (
+                UsuarioDTO (
                     uid = "123",
                     nome = "João da Silva",
                     email = "joaosilva@example.com",

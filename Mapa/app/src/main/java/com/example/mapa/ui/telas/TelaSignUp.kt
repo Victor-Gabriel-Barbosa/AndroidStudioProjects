@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import com.example.mapa.R
 import com.example.mapa.models.LoginState
 import com.example.mapa.ui.componentes.AnimacaoCarregando
+import com.example.mapa.utils.reqLabel
 import com.example.mapa.ui.theme.MapaTheme
 
 @Composable
@@ -182,7 +183,7 @@ fun TelaSignUp(
                             email = it
                             if (erroEmail != null) erroEmail = null // Limpa erro ao digitar
                         },
-                        label = { Text(stringResource(R.string.e_mail) + '*') },
+                        label = { Text(stringResource(R.string.e_mail).reqLabel()) },
                         shape = MaterialTheme.shapes.medium,
                         modifier = Modifier.fillMaxWidth(),
                         enabled = loginState !is LoginState.Carregando,
@@ -209,7 +210,7 @@ fun TelaSignUp(
                             senha = it
                             if (erroSenha != null) erroSenha = null
                         },
-                        label = { Text(stringResource(R.string.senha) + '*') },
+                        label = { Text(stringResource(R.string.senha).reqLabel()) },
                         shape = MaterialTheme.shapes.medium,
                         modifier = Modifier.fillMaxWidth(),
                         enabled = loginState !is LoginState.Carregando,
@@ -245,7 +246,7 @@ fun TelaSignUp(
                             confirmacaoSenha = it
                             if (erroConfirmacao != null) erroConfirmacao = null
                         },
-                        label = { Text(stringResource(R.string.confirmar_senha) + '*') },
+                        label = { Text(stringResource(R.string.confirmar_senha).reqLabel()) },
                         shape = MaterialTheme.shapes.medium,
                         modifier = Modifier.fillMaxWidth(),
                         enabled = loginState !is LoginState.Carregando,

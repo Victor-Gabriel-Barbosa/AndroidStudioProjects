@@ -105,8 +105,8 @@ private fun DialogExcluirPreview() {
                 R.string.tem_certeza_que_deseja_excluir_essa_acao_nao_pode_ser_desfeita,
                 "Chave Perdida"
             ),
-            onConfirmar = { },
-            onCancelar = { }
+            onConfirmar = {},
+            onCancelar = {}
         )
     }
 }
