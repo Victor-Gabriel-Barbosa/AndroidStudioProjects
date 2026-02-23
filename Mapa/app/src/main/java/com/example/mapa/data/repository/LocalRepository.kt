@@ -2,8 +2,8 @@ package com.example.mapa.data.repository
 
 import android.util.Log
 import com.example.mapa.data.local.dao.LocalDao
-import com.example.mapa.data.local.mapper.toDomain
-import com.example.mapa.data.local.mapper.toEntity
+import com.example.mapa.data.mapper.toDomain
+import com.example.mapa.data.mapper.toEntity
 import com.example.mapa.data.remote.dto.LocalDTO
 import com.example.mapa.data.remote.source.LocalRemote
 import kotlinx.coroutines.flow.Flow
@@ -71,19 +71,19 @@ class LocalRepository(
     /**
      * Salva um novo local na fonte de dados remota.
      *
-     * @param localDto O objeto de transferência de dados local a ser salvo.
+     * @param local O objeto de transferência de dados local a ser salvo.
      * @return Um [Result] indicando sucesso ou falha.
      */
-    suspend fun salvarLocal(localDto: LocalDTO): Result<Boolean> {
-        val estadoAntigo = local.getById(localDto.id).firstOrNull()
+    suspend fun salvarLocal(local: LocalDTO): Result<Boolean> {
+        val estadoAntigo = this@LocalRepository.local.getById(local.id).firstOrNull()
 
-        local.insert(localDto.toEntity())
-        val res = remote.save(localDto)
+        this@LocalRepository.local.insert(local.toEntity())
+        val res = remote.save(local)
 
         if (res.isFailure) {
             Log.e("LocalRepository", "Erro ao salvar remoto: ${res.exceptionOrNull()}")
-            if (estadoAntigo != null) local.insert(estadoAntigo)
-            else local.deleteById(localDto.id)
+            if (estadoAntigo != null) this@LocalRepository.local.insert(estadoAntigo)
+            else this@LocalRepository.local.deleteById(local.id)
         }
 
         return res
@@ -113,19 +113,19 @@ class LocalRepository(
     /**
      * Atualiza um local nas fontes de dados local e remota.
      *
-     * @param localDto O objeto de transferência de dados local a ser atualizado.
+     * @param local O objeto de transferência de dados local a ser atualizado.
      * @return Um [Result] indicando sucesso ou falha da operação remota.
      */
-    suspend fun atualizarLocal(localDto: LocalDTO): Result<Boolean> {
-        val estadoAntigo = local.getById(localDto.id).firstOrNull()
+    suspend fun atualizarLocal(local: LocalDTO): Result<Boolean> {
+        val estadoAntigo = this@LocalRepository.local.getById(local.id).firstOrNull()
 
-        local.insert(localDto.toEntity())
-        val res = remote.updateById(localDto.id, localDto)
+        this@LocalRepository.local.insert(local.toEntity())
+        val res = remote.updateById(local.id, local)
 
         if (res.isFailure) {
             Log.e("LocalRepository", "Erro ao atualizar remoto: ${res.exceptionOrNull()}")
-            if (estadoAntigo != null) local.insert(estadoAntigo)
-            else local.deleteById(localDto.id)
+            if (estadoAntigo != null) this@LocalRepository.local.insert(estadoAntigo)
+            else this@LocalRepository.local.deleteById(local.id)
         }
 
         return res

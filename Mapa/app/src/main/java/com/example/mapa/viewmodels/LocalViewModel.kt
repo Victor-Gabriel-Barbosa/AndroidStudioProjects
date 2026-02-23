@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.mapa.data.remote.source.AuthRemote
 import com.example.mapa.data.remote.dto.LocalDTO
 import com.example.mapa.data.repository.LocalRepository
-import com.example.mapa.models.LocalState
+import com.example.mapa.model.LocalUiState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,7 +49,7 @@ class LocalViewModel(
      * Fluxo de locais do usuário.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val locaisUsuarioFlow = authRemote.usuarioDTOState
+    private val locaisUsuarioFlow = authRemote.usuarioState
         .flatMapLatest { usuario ->
             if (usuario?.uid.isNullOrBlank()) flowOf(emptyList())
             else localRepo.carregarLocaisUsuario(usuario.uid)
@@ -58,12 +58,12 @@ class LocalViewModel(
     /**
      * O estado da UI para a tela de locais.
      */
-    val uiState: StateFlow<LocalState> = combine(
+    val uiState: StateFlow<LocalUiState> = combine(
         locaisFlow,
         locaisUsuarioFlow,
         _carregando
     ) { locais, locaisUsuario, carregando ->
-        LocalState(
+        LocalUiState(
             locais = locais,
             locaisUsuario = locaisUsuario,
             carregando = carregando
@@ -71,19 +71,19 @@ class LocalViewModel(
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = LocalState(carregando = true)
+        initialValue = LocalUiState(carregando = true)
     )
 
     /**
      * Adiciona um novo local ao repositório.
      *
-     * @param localDto O local a ser adicionado.
+     * @param local O local a ser adicionado.
      */
-    fun adicionarLocal(localDto: LocalDTO) {
+    fun adicionarLocal(local: LocalDTO) {
         viewModelScope.launch {
             _carregando.value = true
 
-            localRepo.salvarLocal(localDto.copy(id = UUID.randomUUID().toString()))
+            localRepo.salvarLocal(local.copy(id = UUID.randomUUID().toString()))
                 .onSuccess { _canal.send("Local salvo com sucesso!") }
                 .onFailure { _canal.send("Erro ao salvar: ${it.message}") }
 
@@ -94,13 +94,13 @@ class LocalViewModel(
     /**
      * Edita um local existente no repositório.
      *
-     * @param localDto O local a ser atualizado.
+     * @param local O local a ser atualizado.
      */
-    fun editarLocal(localDto: LocalDTO) {
+    fun editarLocal(local: LocalDTO) {
         viewModelScope.launch {
             _carregando.value = true
 
-            localRepo.atualizarLocal(localDto)
+            localRepo.atualizarLocal(local)
                 .onSuccess {
                     _canal.send("Local atualizado com sucesso!")
                 }

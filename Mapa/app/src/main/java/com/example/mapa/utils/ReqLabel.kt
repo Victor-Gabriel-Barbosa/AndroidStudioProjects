@@ -11,9 +11,9 @@ import androidx.compose.ui.text.withStyle
  * Adicione um asterisco vermelho ao final de uma string para indicar que é um campo obrigatório.
  */
 @Composable
-fun String.reqLabel(): AnnotatedString {
+fun String.labelObrigatorio(): AnnotatedString {
     return buildAnnotatedString {
-        append(this@reqLabel)
+        append(this@labelObrigatorio)
         withStyle(SpanStyle(color = MaterialTheme.colorScheme.error)) {
             append(" *")
         }

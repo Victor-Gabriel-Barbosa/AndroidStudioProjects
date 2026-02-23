@@ -226,6 +226,9 @@ exports.notificarNovaMensagem = onDocumentCreated("chats/{salaId}/mensagens/{men
         // Formata o texto (tratar caso seja só envio de imagem)
         const corpoNotificacao = msgNova.texto ? msgNova.texto : "📷 Nova imagem recebida";
 
+        // Busca o localId no documento do chat
+        const localId = chatSnapshot.data()?.localId || "";
+
         // Monta a carga útil (payload) da notificação
         const payload = {
             token: tokenFcm,
@@ -234,8 +237,8 @@ exports.notificarNovaMensagem = onDocumentCreated("chats/{salaId}/mensagens/{men
                 body: corpoNotificacao
             },
             data: {
-                // Passa o salaId no payload de dados para usar no Android depois (ex: Deep Link)
-                salaId: salaId,
+                contatoUid: msgNova.autorUid,
+                localId: localId,
                 tipo: "nova_mensagem"
             }
         };

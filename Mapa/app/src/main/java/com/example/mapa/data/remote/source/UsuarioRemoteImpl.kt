@@ -30,13 +30,13 @@ class UsuarioRemoteImpl(
     /**
      * Salva um novo usuário no Firestore. O ID do documento será o UID do usuário.
      *
-     * @param usuarioDto O objeto [UsuarioDTO] a ser salvo.
+     * @param usuario O objeto [UsuarioDTO] a ser salvo.
      * @return [Result.success] com `true` se a operação for bem-sucedida, [Result.failure] caso contrário.
      */
-    override suspend fun save(usuarioDto: UsuarioDTO): Result<Boolean> {
+    override suspend fun save(usuario: UsuarioDTO): Result<Boolean> {
         return try {
-            collection.document(usuarioDto.uid)
-                .set(usuarioDto)
+            collection.document(usuario.uid)
+                .set(usuario)
                 .await()
 
             Result.success(true)
@@ -60,10 +60,10 @@ class UsuarioRemoteImpl(
             }
 
             if (snapshot != null) {
-                val usuarioDTOS = snapshot.documents.mapNotNull { doc ->
+                val usuarios = snapshot.documents.mapNotNull { doc ->
                     doc.toObject(UsuarioDTO::class.java)
                 }
-                trySend(usuarioDTOS)
+                trySend(usuarios)
             }
         }
 
@@ -86,8 +86,8 @@ class UsuarioRemoteImpl(
             }
 
             if (snapshot != null && snapshot.exists()) {
-                val usuarioDto = snapshot.toObject(UsuarioDTO::class.java)
-                if (usuarioDto != null) trySend(listOf(usuarioDto))
+                val usuario = snapshot.toObject(UsuarioDTO::class.java)
+                if (usuario != null) trySend(listOf(usuario))
                 else trySend(emptyList())
             } else trySend(emptyList())
         }
@@ -100,16 +100,16 @@ class UsuarioRemoteImpl(
      * ela será enviada para o Firebase Storage e a URL será atualizada.
      *
      * @param uid O UID do usuário a ser atualizado.
-     * @param usuarioDto O objeto [UsuarioDTO] com os dados atualizados.
+     * @param usuario O objeto [UsuarioDTO] com os dados atualizados.
      * @return [Result.success] com `true` se a operação for bem-sucedida, [Result.failure] caso contrário.
      */
-    override suspend fun updateByUid(uid: String, usuarioDto: UsuarioDTO): Result<Boolean> {
+    override suspend fun updateByUid(uid: String, usuario: UsuarioDTO): Result<Boolean> {
         return try {
-            val downloadUrl = if (usuarioDto.foto != null && !usuarioDto.foto.startsWith("http")) uploadImg(uid, usuarioDto.foto)
-            else usuarioDto.foto
+            val downloadUrl = if (usuario.foto != null && !usuario.foto.startsWith("http")) uploadImg(uid, usuario.foto)
+            else usuario.foto
 
             collection.document(uid)
-                .set(usuarioDto.copy(foto = downloadUrl), SetOptions.merge())
+                .set(usuario.copy(foto = downloadUrl), SetOptions.merge())
                 .await()
 
             Result.success(true)

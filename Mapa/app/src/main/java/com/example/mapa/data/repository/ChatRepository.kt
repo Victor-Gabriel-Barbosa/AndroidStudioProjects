@@ -2,8 +2,8 @@ package com.example.mapa.data.repository
 
 import android.util.Log
 import com.example.mapa.data.local.dao.ChatDao
-import com.example.mapa.data.local.mapper.toDomain
-import com.example.mapa.data.local.mapper.toEntity
+import com.example.mapa.data.mapper.toDomain
+import com.example.mapa.data.mapper.toEntity
 import com.example.mapa.data.remote.dto.ChatDTO
 import com.example.mapa.data.remote.dto.MensagemDTO
 import com.example.mapa.data.remote.source.ChatRemote
@@ -73,12 +73,12 @@ class ChatRepository(
      *
      * @param salaId O identificador único da sala de conversa.
      * @param msg A mensagem a ser salva.
-     * @param chatDto O objeto de transferência de dados da conversa.
+     * @param chat O objeto de transferência de dados da conversa.
      * @return Um [Result] indicando sucesso ou falha.
      */
-    suspend fun salvarMsg(salaId: String, msg: MensagemDTO, chatDto: ChatDTO): Result<Boolean> {
+    suspend fun salvarMsg(salaId: String, msg: MensagemDTO, chat: ChatDTO): Result<Boolean> {
         local.insertMsg(msg.toEntity(salaId))
-        val res = remote.save(salaId, msg, chatDto)
+        val res = remote.save(salaId, msg, chat)
 
         if (res.isFailure) {
             Log.e("ChatRepository", "Erro ao salvar msg: ${res.exceptionOrNull()}")

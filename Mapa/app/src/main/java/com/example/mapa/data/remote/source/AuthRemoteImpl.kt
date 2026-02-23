@@ -25,7 +25,7 @@ class AuthRemoteImpl(
      * Emite um objeto [UsuarioDTO] se o usuário estiver logado, ou `null` caso contrário.
      * O Flow é atualizado em tempo real sempre que o estado de autenticação muda.
      */
-    override val usuarioDTOState: Flow<UsuarioDTO?> = callbackFlow {
+    override val usuarioState: Flow<UsuarioDTO?> = callbackFlow {
         val authStateListener = FirebaseAuth.AuthStateListener { trySend(it.currentUser?.toUsuario()) }
         auth.addAuthStateListener(authStateListener)
         awaitClose { auth.removeAuthStateListener(authStateListener) }
@@ -33,9 +33,9 @@ class AuthRemoteImpl(
 
     /**
      * Um [Flow] que emite `true` se houver um usuário logado e `false` caso contrário.
-     * Derivado do [usuarioDTOState].
+     * Derivado do [usuarioState].
      */
-    override val usuarioLogado: Flow<Boolean?> = usuarioDTOState.map { it != null }
+    override val usuarioLogado: Flow<Boolean?> = usuarioState.map { it != null }
 
     /**
      * Tenta autenticar um usuário com e-mail e senha.

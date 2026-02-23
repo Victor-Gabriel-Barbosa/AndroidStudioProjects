@@ -35,16 +35,16 @@ class LocalRemoteImpl(
      * Salva um novo local no Firestore. As imagens associadas são primeiramente enviadas
      * para o Firebase Storage e as URLs de download são salvas no documento do local.
      *
-     * @param localDto O objeto [LocalDTO] a ser salvo.
+     * @param local O objeto [LocalDTO] a ser salvo.
      * @return [Result.success] com `true` se a operação for bem-sucedida, [Result.failure] caso contrário.
      */
-    override suspend fun save(localDto: LocalDTO): Result<Boolean> = coroutineScope {
+    override suspend fun save(local: LocalDTO): Result<Boolean> = coroutineScope {
         return@coroutineScope try {
-            val downloadUrls = localDto.imgUrls.map { uri ->
-                async { uploadImg(localDto.uid, uri) }
+            val downloadUrls = local.imgUrls.map { uri ->
+                async { uploadImg(local.uid, uri) }
             }.awaitAll()
 
-            val localComImagens = localDto.copy(imgUrls = downloadUrls)
+            val localComImagens = local.copy(imgUrls = downloadUrls)
 
             collection
                 .document(localComImagens.id)
@@ -113,21 +113,21 @@ class LocalRemoteImpl(
      * são enviadas para o Storage.
      *
      * @param localId O ID do documento do local a ser atualizado.
-     * @param localDto O objeto [LocalDTO] com os dados atualizados.
+     * @param local O objeto [LocalDTO] com os dados atualizados.
      * @return [Result.success] com `true` se a operação for bem-sucedida, [Result.failure] caso contrário.
      */
-    override suspend fun updateById(localId: String, localDto: LocalDTO): Result<Boolean> =
+    override suspend fun updateById(localId: String, local: LocalDTO): Result<Boolean> =
         coroutineScope {
             return@coroutineScope try {
-                val downloadUrls = localDto.imgUrls.map { url ->
+                val downloadUrls = local.imgUrls.map { url ->
                     async {
-                        if (url.startsWith("http")) url else uploadImg(localDto.uid, url)
+                        if (url.startsWith("http")) url else uploadImg(local.uid, url)
                     }
                 }.awaitAll()
 
                 collection
                     .document(localId)
-                    .set(localDto.copy(imgUrls = downloadUrls), SetOptions.merge())
+                    .set(local.copy(imgUrls = downloadUrls), SetOptions.merge())
                     .await()
 
                 Result.success(true)

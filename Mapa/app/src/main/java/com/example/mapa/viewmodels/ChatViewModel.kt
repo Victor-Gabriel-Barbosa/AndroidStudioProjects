@@ -10,7 +10,7 @@ import com.example.mapa.data.remote.source.AuthRemote
 import com.example.mapa.data.repository.ChatRepository
 import com.example.mapa.data.repository.LocalRepository
 import com.example.mapa.data.repository.UsuarioRepository
-import com.example.mapa.models.ChatState
+import com.example.mapa.model.ChatUiState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -67,7 +67,7 @@ class ChatViewModel(
     /**
      * O UID do autor (usuário logado).
      */
-    val autorUid: StateFlow<String?> = authRemote.usuarioDTOState
+    val autorUid: StateFlow<String?> = authRemote.usuarioState
         .map { it?.uid }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
@@ -89,11 +89,11 @@ class ChatViewModel(
     /**
      * O estado da UI para a tela de chat.
      */
-    val uiState: StateFlow<ChatState> = combine(
+    val uiState: StateFlow<ChatUiState> = combine(
         dadosChatFlow,
         _carregando
     ) { (msgs, contato), carregando ->
-        ChatState(
+        ChatUiState(
             msgs = msgs,
             contato = contato,
             carregando = carregando,
@@ -102,7 +102,7 @@ class ChatViewModel(
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = ChatState(carregando = true, carregandoFoto = true)
+        initialValue = ChatUiState(carregando = true, carregandoFoto = true)
     )
 
     fun inicializar(uid: String, localId: String) {
@@ -154,7 +154,7 @@ class ChatViewModel(
             lido = false
         )
 
-        val chatDTOResumo = ChatDTO(
+        val chatResumo = ChatDTO(
             ultimaMsg = novaMsg,
             ultimoTimestamp = novaMsg.timestamp,
             participantes = listOf(autorUid, contato),
@@ -164,7 +164,7 @@ class ChatViewModel(
 
         viewModelScope.launch {
             _carregando.value = true
-            chatRepo.salvarMsg(salaId, novaMsg, chatDTOResumo)
+            chatRepo.salvarMsg(salaId, novaMsg, chatResumo)
                 .onFailure { e ->
                     Log.e("ChatViewModel", "enviarMsg: ${e.message}")
                     _canal.send("Falha ao enviar: ${e.message}")

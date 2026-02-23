@@ -40,10 +40,10 @@ class ChatRemoteImpl(
      *
      * @param salaId O ID do documento da sala de chat.
      * @param msg O objeto [MensagemDTO] a ser salvo.
-     * @param chatDto O objeto [ChatDTO] com o resumo atualizado a ser salvo (merge).
+     * @param chat O objeto [ChatDTO] com o resumo atualizado a ser salvo (merge).
      * @return [Result.success] com `true` se a operação for bem-sucedida, [Result.failure] caso contrário.
      */
-    override suspend fun save(salaId: String, msg: MensagemDTO, chatDto: ChatDTO): Result<Boolean> = coroutineScope {
+    override suspend fun save(salaId: String, msg: MensagemDTO, chat: ChatDTO): Result<Boolean> = coroutineScope {
         return@coroutineScope try {
             val downloadUrls = msg.imgUrls.map { uri ->
                 async { uploadImg(msg.autorUid, uri) }
@@ -60,7 +60,7 @@ class ChatRemoteImpl(
 
             collection
                 .document(salaId)
-                .set(chatDto, SetOptions.merge())
+                .set(chat, SetOptions.merge())
                 .await()
 
             Result.success(true)
@@ -89,10 +89,10 @@ class ChatRemoteImpl(
                 }
 
                 if (snapshot != null) {
-                    val chatDTOS = snapshot.documents.mapNotNull { doc ->
+                    val chats = snapshot.documents.mapNotNull { doc ->
                         doc.toObject(ChatDTO::class.java)?.copy(salaId = doc.id)
                     }
-                    trySend(chatDTOS)
+                    trySend(chats)
                 }
             }
         awaitClose { listener.remove() }

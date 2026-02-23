@@ -4,8 +4,8 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mapa.data.remote.source.AuthRemote
-import com.example.mapa.models.ChatItem
-import com.example.mapa.models.ChatListState
+import com.example.mapa.model.ChatItem
+import com.example.mapa.model.ChatListUiState
 import com.example.mapa.data.repository.ChatRepository
 import com.example.mapa.data.repository.UsuarioRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -38,7 +38,7 @@ class ChatListViewModel(
     /**
      * O UID do usuário logado.
      */
-    private val autorUid: StateFlow<String?> = authRemote.usuarioDTOState
+    private val autorUid: StateFlow<String?> = authRemote.usuarioState
         .map { it?.uid }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
@@ -70,11 +70,11 @@ class ChatListViewModel(
     /**
      * O estado da UI para a tela de lista de chats.
      *
-     * Este [StateFlow] emite o [ChatListState] que contém a lista de conversas do usuário,
+     * Este [StateFlow] emite o [ChatListUiState] que contém a lista de conversas do usuário,
      * o status de carregamento e quaisquer erros que possam ter ocorrido.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    val uiState: StateFlow<ChatListState> = autorUid
+    val uiState: StateFlow<ChatListUiState> = autorUid
         .filterNotNull()
         .flatMapLatest { autorUid ->
             chatRepo.carregarChats(autorUid).flatMapLatest { listaDeChats ->
@@ -97,7 +97,7 @@ class ChatListViewModel(
                             }
                             .map { usuario ->
                                 ChatItem(
-                                    chatDto = chat,
+                                    chat = chat,
                                     contato = usuario
                                 )
                             }
@@ -107,20 +107,20 @@ class ChatListViewModel(
             }
         }
         .map { chats ->
-            val chatsOrdenados = chats.sortedByDescending { it.chatDto.ultimoTimestamp }
-            ChatListState(chats = chatsOrdenados, carregando = false, erro = null)
+            val chatsOrdenados = chats.sortedByDescending { it.chat.ultimoTimestamp }
+            ChatListUiState(chats = chatsOrdenados, carregando = false, erro = null)
         }
         .onStart {
-            emit(ChatListState(carregando = true))
+            emit(ChatListUiState(carregando = true))
         }
         .catch { e ->
             Log.e("ChatListViewModel", "uiState: ${e.message}")
-            emit(ChatListState(carregando = false, erro = e.message ?: "Erro desconhecido"))
+            emit(ChatListUiState(carregando = false, erro = e.message ?: "Erro desconhecido"))
         }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = ChatListState(carregando = true)
+            initialValue = ChatListUiState(carregando = true)
         )
 
     /**

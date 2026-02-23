@@ -111,4 +111,8 @@
     <string name="copiar">Copiar</string>
     <string name="copiar_texto">Copiar texto</string>
     <string name="excluir_mensagem">Excluir mensagem</string>
+    <string name="abrir_configuracoes">Abrir Configurações</string>
+    <string name="permitir_localizacao_em_segundo_plano">Permitir localização em segundo plano</string>
+    <string name="explicacao_permissao_background">O app precisa da sua localização, inclusive em segundo plano, para exibir corretamente as informações no mapa. Para isso, selecione “Permitir o tempo todo” na próxima tela. Você pode mudar essa permissão quando quiser nas configurações.</string>
+    <string name="agora_nao">Agora não</string>
 </resources>

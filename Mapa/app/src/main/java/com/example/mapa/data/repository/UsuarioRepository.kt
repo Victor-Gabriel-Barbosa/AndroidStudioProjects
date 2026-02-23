@@ -3,8 +3,8 @@ package com.example.mapa.data.repository
 import android.util.Log
 import com.example.mapa.data.local.dao.UsuarioDao
 import com.example.mapa.data.local.entity.UsuarioEntity
-import com.example.mapa.data.local.mapper.toDomain
-import com.example.mapa.data.local.mapper.toEntity
+import com.example.mapa.data.mapper.toDomain
+import com.example.mapa.data.mapper.toEntity
 import com.example.mapa.data.remote.dto.UsuarioDTO
 import com.example.mapa.data.remote.source.AuthRemote
 import com.example.mapa.data.remote.source.UsuarioRemote
@@ -35,7 +35,7 @@ class UsuarioRepository(
      * Sincroniza automaticamente os dados do usuário do Firebase para o banco de dados local.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    val usuario: Flow<UsuarioEntity?> = auth.usuarioDTOState.flatMapLatest { usuario ->
+    val usuario: Flow<UsuarioEntity?> = auth.usuarioState.flatMapLatest { usuario ->
         if (usuario == null) return@flatMapLatest flowOf(null)
 
         flow {
@@ -87,19 +87,19 @@ class UsuarioRepository(
      * Atualiza os dados de um usuário no banco de dados local e no Firebase.
      * Registra um erro se a atualização remota falhar.
      *
-     * @param usuarioDto O objeto de transferência de dados do usuário com os dados atualizados.
+     * @param usuario O objeto de transferência de dados do usuário com os dados atualizados.
      * @return Um [Result] indicando sucesso ou falha da operação.
      */
-    suspend fun atualizarUsuario(usuarioDto: UsuarioDTO): Result<Boolean> {
-        val estadoAntigo = local.getById(usuarioDto.uid).firstOrNull()
+    suspend fun atualizarUsuario(usuario: UsuarioDTO): Result<Boolean> {
+        val estadoAntigo = local.getById(usuario.uid).firstOrNull()
 
-        local.insert(usuarioDto.toEntity())
-        val res = remote.updateByUid(usuarioDto.uid, usuarioDto)
+        local.insert(usuario.toEntity())
+        val res = remote.updateByUid(usuario.uid, usuario)
 
         if (res.isFailure) {
             Log.e("UserRepository", "Falha ao salvar remoto", res.exceptionOrNull())
             if (estadoAntigo != null) local.insert(estadoAntigo)
-            else local.deleteById(usuarioDto.uid)
+            else local.deleteById(usuario.uid)
         }
 
         return res

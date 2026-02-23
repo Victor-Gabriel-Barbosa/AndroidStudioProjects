@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.Flow
  * Interface que define os métodos do repositório remoto de conversas.
  */
 interface ChatRemote {
-    suspend fun save(salaId: String, msg: MensagemDTO, chatDto: ChatDTO): Result<Boolean>
+    suspend fun save(salaId: String, msg: MensagemDTO, chat: ChatDTO): Result<Boolean>
     fun findById(salaId: String): Flow<List<MensagemDTO>>
     fun findByUid(uid: String): Flow<List<ChatDTO>>
     suspend fun updateMsgsLidasById(salaId: String, uid: String): Result<Boolean>

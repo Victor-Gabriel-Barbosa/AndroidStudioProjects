@@ -6,10 +6,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.mapa.models.LoginState
-import com.example.mapa.ui.componentes.OverlayCarregando
-import com.example.mapa.ui.navegacao.AuthNav
-import com.example.mapa.ui.navegacao.MapaNav
+import com.example.mapa.model.LoginUiState
+import com.example.mapa.ui.components.OverlayCarregando
+import com.example.mapa.ui.navigation.AuthNav
+import com.example.mapa.ui.navigation.MapaNav
 import com.example.mapa.ui.theme.MapaTheme
 import com.example.mapa.viewmodels.AuthViewModel
 import com.google.firebase.Firebase
@@ -35,7 +35,7 @@ class MainActivity : ComponentActivity() {
                 MapaTheme {
                     // Variáveis e estados de autenticação
                     val authViewModel: AuthViewModel = koinViewModel()
-                    val loginState by authViewModel.loginState.collectAsStateWithLifecycle()
+                    val loginState by authViewModel.loginUiState.collectAsStateWithLifecycle()
                     val usuarioState by authViewModel.uiState.collectAsStateWithLifecycle()
 
                     when {
@@ -43,9 +43,9 @@ class MainActivity : ComponentActivity() {
                         usuarioState.logado == null -> OverlayCarregando()
 
                         // Exibe a tela principal se o usuário estiver logado
-                        usuarioState.logado == true && loginState is LoginState.Parado -> {
+                        usuarioState.logado == true && loginState is LoginUiState.Parado -> {
                             MapaNav(
-                                usuarioState = usuarioState,
+                                usuarioUiState = usuarioState,
                                 onLogout = { authViewModel.logout() },
                                 onEditarFoto = { authViewModel.atualizarFoto(it) },
                                 onEditarNome = { authViewModel.atualizarNome(it) }

@@ -7,9 +7,9 @@ import kotlinx.coroutines.flow.Flow
  * Interface que define os métodos do repositório remoto de usuários.
  */
 interface UsuarioRemote {
-    suspend fun save(usuarioDto: UsuarioDTO): Result<Boolean>
+    suspend fun save(usuario: UsuarioDTO): Result<Boolean>
     fun findAll(): Flow<List<UsuarioDTO>>
     fun findByUid(uid: String): Flow<List<UsuarioDTO>>
-    suspend fun updateByUid(uid: String, usuarioDto: UsuarioDTO): Result<Boolean>
+    suspend fun updateByUid(uid: String, usuario: UsuarioDTO): Result<Boolean>
     suspend fun deleteByUid(uid: String): Result<Boolean>
 }
