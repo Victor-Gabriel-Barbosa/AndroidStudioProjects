@@ -7,5 +7,5 @@ sealed class LoginUiState {
     data object Parado : LoginUiState()
     data object Carregando : LoginUiState()
     data object Sucesso : LoginUiState()
-    data class Erro(val mensagem: String) : LoginUiState()
+    data class Erro(val msg: String) : LoginUiState()
 }

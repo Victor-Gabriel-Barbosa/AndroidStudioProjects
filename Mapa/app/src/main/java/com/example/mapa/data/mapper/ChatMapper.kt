@@ -18,7 +18,7 @@ fun ChatDTO.toEntity(): ChatEntity {
     )
 }
 
-fun ChatEntity.toDomain(): ChatDTO {
+fun ChatEntity.toDTO(): ChatDTO {
     val ultimaMsg = if (ultimaMsgAutorUid != null) {
         MensagemDTO(
             autorUid = ultimaMsgAutorUid,

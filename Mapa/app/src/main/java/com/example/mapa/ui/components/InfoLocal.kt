@@ -48,13 +48,7 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Componente que exibe os detalhes e informações de um [LocalDTO] específico.
- *
- * Mostra informações como nome, tipo, data, descrição e raio.
- * Apresenta um carrossel de imagens, se houver.
- * Oferece botões de ação diferentes dependendo se o usuário atual é o criador do registro:
- * - Se for o criador: botões para "Excluir" e "Editar".
- * - Se não for o criador: botões para "Cancelar" e "Conversar" (iniciar chat).
+ * Componente que exibe os detalhes de um local.
  *
  * @param local O objeto [LocalDTO] cujos detalhes serão exibidos.
  * @param usuarioUid O UID do usuário logado, para verificar se ele é o criador do local.
@@ -285,12 +279,6 @@ fun InfoLocal(
     }
 }
 
-/**
- * Preview do componente [InfoLocal].
- *
- * Simula a visualização dos detalhes de um local onde o usuário logado é o criador,
- * mostrando os botões de "Excluir" e "Editar".
- */
 @Preview(showBackground = true)
 @Composable
 private fun InfoLocalPreview() {

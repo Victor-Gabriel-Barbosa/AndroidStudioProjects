@@ -4,9 +4,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -36,9 +39,9 @@ import com.example.mapa.R
 import com.example.mapa.ui.theme.MapaTheme
 
 /**
- * Composable que exibe um diálogo de imagem em tela cheia com suporte a gestos de zoom e pan.
+ * Composable de diálogo de imagem.
  *
- * @param img URL ou caminho da imagem a ser exibida. Se for nulo ou estiver em branco, o diálogo não é exibido.
+ * @param img URL ou caminho da imagem a ser exibida.
  * @param onFechar Callback invocado quando o diálogo deve ser fechado.
  * @param modifier [Modifier] a ser aplicado ao Surface do diálogo.
  */
@@ -57,6 +60,7 @@ fun DialogImg(
             decorFitsSystemWindows = false
         )
     ) {
+        // Variáveis para controlar o zoom e o deslocamento da imagem
         var scale by remember { mutableFloatStateOf(1f) }
         var offset by remember { mutableStateOf(Offset.Zero) }
 
@@ -102,8 +106,8 @@ fun DialogImg(
                     onClick = onFechar,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
+                        .windowInsetsPadding(WindowInsets.statusBars)
                         .padding(16.dp)
-                        .padding(top = 24.dp)
                         .background(MaterialTheme.colorScheme.surface, CircleShape)
                 ) {
                     Icon(
@@ -117,9 +121,6 @@ fun DialogImg(
     }
 }
 
-/**
- * Preview do componente [DialogImg].
- */
 @Preview
 @Composable
 private fun DialogImgPreview() {

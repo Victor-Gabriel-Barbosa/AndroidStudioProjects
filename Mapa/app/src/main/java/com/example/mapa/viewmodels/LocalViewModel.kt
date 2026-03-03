@@ -2,7 +2,7 @@ package com.example.mapa.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.mapa.data.remote.source.AuthRemote
+import com.example.mapa.data.remote.datasource.AuthRemote
 import com.example.mapa.data.remote.dto.LocalDTO
 import com.example.mapa.data.repository.LocalRepository
 import com.example.mapa.model.LocalUiState
@@ -43,16 +43,16 @@ class LocalViewModel(
     /**
      * Fluxo de todos os locais.
      */
-    private val locaisFlow = localRepo.carregarLocais()
+    private val locaisFlow = localRepo.getLocais()
 
     /**
      * Fluxo de locais do usuário.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val locaisUsuarioFlow = authRemote.usuarioState
+    private val locaisUsuarioFlow = authRemote.usuario
         .flatMapLatest { usuario ->
             if (usuario?.uid.isNullOrBlank()) flowOf(emptyList())
-            else localRepo.carregarLocaisUsuario(usuario.uid)
+            else localRepo.getLocaisUsuario(usuario.uid)
         }
 
     /**
@@ -83,7 +83,7 @@ class LocalViewModel(
         viewModelScope.launch {
             _carregando.value = true
 
-            localRepo.salvarLocal(local.copy(id = UUID.randomUUID().toString()))
+            localRepo.insertLocal(local.copy(id = UUID.randomUUID().toString()))
                 .onSuccess { _canal.send("Local salvo com sucesso!") }
                 .onFailure { _canal.send("Erro ao salvar: ${it.message}") }
 
@@ -100,7 +100,7 @@ class LocalViewModel(
         viewModelScope.launch {
             _carregando.value = true
 
-            localRepo.atualizarLocal(local)
+            localRepo.updateLocal(local)
                 .onSuccess {
                     _canal.send("Local atualizado com sucesso!")
                 }
@@ -121,7 +121,7 @@ class LocalViewModel(
         viewModelScope.launch {
             _carregando.value = true
 
-            localRepo.deletarLocal(id)
+            localRepo.deleteLocal(id)
                 .onSuccess { _canal.send("Local removido!") }
                 .onFailure { _canal.send("Erro ao remover.") }
 

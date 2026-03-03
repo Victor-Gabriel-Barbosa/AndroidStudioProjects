@@ -8,12 +8,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.DoneAll
@@ -29,6 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
@@ -57,7 +61,6 @@ import java.util.Locale
 
 /**
  * Componente que exibe uma bolha de mensagem no chat.
- * Suporta mensagens de texto, imagens, indicadores de leitura e menu de opções (editar/excluir).
  *
  * @param msg O objeto [MensagemDTO] contendo os dados da mensagem a ser exibida.
  * @param autor Indica se a mensagem foi enviada pelo usuário atual (alinha à direita e mostra opções).
@@ -68,7 +71,7 @@ import java.util.Locale
 fun BolhaMsg(
     msg: MensagemDTO,
     autor: Boolean,
-    onEditar: (String, MensagemDTO) -> Unit,
+    onEditar: (MensagemDTO) -> Unit,
     onExcluir: (String) -> Unit
 ) {
     // Gerenciador de clipboard para copiar texto
@@ -76,12 +79,18 @@ fun BolhaMsg(
     val scope = rememberCoroutineScope()
 
     // Cores e alinhamento da mensagem
-    val corBolha =
-        if (autor) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
-    val corTexto =
-        if (autor) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-    val alignment = if (autor) Alignment.End else Alignment.Start
-    val menuAlignment = if (autor) Alignment.TopEnd else Alignment.TopStart
+    val corTexto = if (autor) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+    val selectionColors = if (autor) {
+        TextSelectionColors(
+            handleColor = MaterialTheme.colorScheme.onPrimary,
+            backgroundColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.25f)
+        )
+    } else {
+        TextSelectionColors(
+            handleColor = MaterialTheme.colorScheme.primary,
+            backgroundColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
+        )
+    }
 
     // Estado para controlar a visibilidade do menu
     var mostrarMenu by rememberSaveable { mutableStateOf(false) }
@@ -115,7 +124,6 @@ fun BolhaMsg(
         onConfirmar = {
             mostrarEditarDialog = false
             onEditar(
-                msg.id,
                 msg.copy(texto = it, editado = true, timestamp = System.currentTimeMillis())
             )
         }
@@ -123,17 +131,22 @@ fun BolhaMsg(
 
     Column(
         modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = alignment
+        horizontalAlignment = if (autor) Alignment.End else Alignment.Start
     ) {
         Surface(
-            color = corBolha,
+            color = if (autor) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
             shape = shape,
             modifier = Modifier.widthIn(max = maxWidth)
         ) {
             Box(
                 modifier = Modifier.padding(10.dp)
             ) {
-                Column {
+                Column(
+                    modifier = Modifier.padding(
+                        start = if (autor) 0.dp else 20.dp,
+                        end = if (autor) 20.dp else 0.dp
+                    )
+                ) {
                     msg.imgUrls.forEach {
                         AsyncImage(
                             model = it,
@@ -146,15 +159,13 @@ fun BolhaMsg(
                         )
                     }
 
-                    SelectionContainer {
-                        Text(
-                            text = msg.texto,
-                            color = corTexto,
-                            modifier = Modifier.padding(
-                                start = if (autor) 0.dp else 20.dp,
-                                end = if (autor) 20.dp else 0.dp
+                    CompositionLocalProvider(LocalTextSelectionColors provides selectionColors) {
+                        SelectionContainer {
+                            Text(
+                                text = msg.texto,
+                                color = corTexto
                             )
-                        )
+                        }
                     }
 
                     // Rodapé da mensagem (Hora + Check)
@@ -197,7 +208,7 @@ fun BolhaMsg(
 
                 // Botão de opções (Menu Dropdown)
                 Box(
-                    modifier = Modifier.align(menuAlignment)
+                    modifier = Modifier.align(if (autor) Alignment.TopEnd else Alignment.TopStart)
                 ) {
                     IconButton(
                         onClick = { mostrarMenu = true },
@@ -232,7 +243,7 @@ fun BolhaMsg(
                             }
                         )
 
-                        // Opções de edição e exclusão (apenas se for o usuário ativo)
+                        // Opções de edição e exclusão (apenas se for o autor da mensagem)
                         if (autor) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.editar)) },
@@ -269,9 +280,6 @@ fun BolhaMsg(
     }
 }
 
-/**
- * Preview das bolhas de mensagem em um contexto de chat.
- */
 @Preview
 @Composable
 fun BolhaMsgPreview() {
@@ -286,11 +294,11 @@ fun BolhaMsgPreview() {
                     timestamp = System.currentTimeMillis()
                 ),
                 autor = true,
-                onEditar = { _, _ -> },
+                onEditar = {},
                 onExcluir = {}
             )
 
-            Spacer(modifier = Modifier.size(8.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             BolhaMsg(
                 msg = MensagemDTO(
@@ -301,7 +309,7 @@ fun BolhaMsgPreview() {
                     timestamp = System.currentTimeMillis()
                 ),
                 autor = false,
-                onEditar = { _, _ -> },
+                onEditar = {},
                 onExcluir = {}
             )
         }

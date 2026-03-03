@@ -12,7 +12,16 @@ import com.example.mapa.R
 import com.example.mapa.ui.theme.MapaTheme
 
 /**
- * Diálogo de confirmação de ação.
+ * Componente de diálogo de confirmação.
+ *
+ * @param modifier Modificador para personalização.
+ * @param visivel Indica se o diálogo está visível.
+ * @param titulo Título do diálogo.
+ * @param texto Texto do diálogo.
+ * @param onFechar Ação a ser executada ao fechar o diálogo.
+ * @param onConfirmar Ação a ser executada ao confirmar a ação.
+ * @param textoConfirmar Texto do botão de confirmação.
+ * @param textoCancelar Texto do botão de cancelamento.
  */
 @Composable
 fun DialogConfirmar(

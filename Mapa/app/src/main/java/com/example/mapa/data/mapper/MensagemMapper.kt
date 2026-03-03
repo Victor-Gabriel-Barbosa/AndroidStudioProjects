@@ -15,7 +15,7 @@ fun MensagemDTO.toEntity(salaId: String): MensagemEntity {
     )
 }
 
-fun MensagemEntity.toDomain(): MensagemDTO {
+fun MensagemEntity.toDTO(): MensagemDTO {
     return MensagemDTO(
         id = this.id,
         autorUid = this.autorUid,

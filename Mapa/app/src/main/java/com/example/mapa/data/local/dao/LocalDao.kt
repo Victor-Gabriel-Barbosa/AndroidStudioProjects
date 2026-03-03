@@ -20,8 +20,6 @@ interface LocalDao {
     suspend fun getById(id: String): List<LocalEntity>
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(local: LocalEntity)
-    @Query("UPDATE local SET entregue = 1 WHERE id = :id")
-    suspend fun updateEntregueById(id: String)
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(locais: List<LocalEntity>)
     @Query("DELETE FROM local WHERE id = :id")

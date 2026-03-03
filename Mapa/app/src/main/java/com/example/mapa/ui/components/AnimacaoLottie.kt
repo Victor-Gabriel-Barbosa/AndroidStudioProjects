@@ -53,9 +53,6 @@ fun AnimacaoLottie(
     )
 }
 
-/**
- * Preview do componente [AnimacaoLottie] exibindo uma animação de exemplo.
- */
 @Preview
 @Composable
 private fun AnimacaoLottiePreview() {

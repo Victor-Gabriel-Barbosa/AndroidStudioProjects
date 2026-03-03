@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.dp
 import com.example.mapa.ui.theme.MapaTheme
 
 /**
- * Um componente de cabeçalho que exibe um ícone e um título.
+ * Componente de cabeçalho que exibe um ícone e um título.
  *
  * @param titulo O texto a ser exibido como título no cabeçalho.
  * @param icone O ID do recurso drawable para o ícone a ser exibido.
@@ -64,9 +64,6 @@ fun Header(
     }
 }
 
-/**
- * Preview do componente [Header].
- */
 @Preview
 @Composable
 private fun HeaderPreview() {

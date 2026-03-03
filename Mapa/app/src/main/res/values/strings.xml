@@ -102,7 +102,7 @@
     <string name="estrela">Estrela %1$d</string>
     <string name="entregue">Entregue</string>
     <string name="avaliar">Avaliar</string>
-    <string name="qual_nota_voc_da_para_a_ajuda">Qual nota você dá para a ajuda?</string>
+    <string name="qual_nota_voce_da_para_a_ajuda">Qual nota você dá para a ajuda?</string>
     <string name="confirmar">Confirmar</string>
     <string name="selecionado">Selecionado</string>
     <string name="cancelar_selecao">Cancelar seleção</string>
@@ -115,4 +115,8 @@
     <string name="permitir_localizacao_em_segundo_plano">Permitir localização em segundo plano</string>
     <string name="explicacao_permissao_background">O app precisa da sua localização, inclusive em segundo plano, para exibir corretamente as informações no mapa. Para isso, selecione “Permitir o tempo todo” na próxima tela. Você pode mudar essa permissão quando quiser nas configurações.</string>
     <string name="agora_nao">Agora não</string>
+    <string name="nota">Nota: %1$d</string>
+    <string name="avaliar_usuario">Avaliar %1$s</string>
+    <string name="voce_esta_perto_de_um_item_perdido">Você está perto de um item perdido</string>
+    <string name="voce_esta_proximo_de">Você está próximo de: %1$s</string>
 </resources>

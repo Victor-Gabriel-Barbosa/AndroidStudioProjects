@@ -17,6 +17,14 @@ import androidx.compose.ui.unit.dp
 import com.example.mapa.R
 import com.example.mapa.ui.theme.MapaTheme
 
+/**
+ * Componente que exibe uma barra de avaliação de estrelas.
+ *
+ * @param nota A nota atual da avaliação (de 1 a 5).
+ * @param onNotaChange Callback que é chamado quando a nota é alterada.
+ * @param modifier [Modifier] para customizar o layout, tamanho e comportamento do componente.
+ * @param maxEstrelas O número máximo de estrelas
+ */
 @Composable
 fun BarraAvalicao(
     nota: Int,

@@ -17,6 +17,5 @@ data class LocalEntity(
     val longitude: Double,
     val raio: Double,
     val data: Long?,
-    val imgUrls: String,
-    val entregue: Boolean
+    val imgUrls: String
 )

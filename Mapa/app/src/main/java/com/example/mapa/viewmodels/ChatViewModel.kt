@@ -6,9 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.mapa.data.remote.dto.ChatDTO
 import com.example.mapa.data.remote.dto.MensagemDTO
 import com.example.mapa.data.remote.dto.UsuarioDTO
-import com.example.mapa.data.remote.source.AuthRemote
+import com.example.mapa.data.remote.datasource.AuthRemote
 import com.example.mapa.data.repository.ChatRepository
-import com.example.mapa.data.repository.LocalRepository
 import com.example.mapa.data.repository.UsuarioRepository
 import com.example.mapa.model.ChatUiState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -31,17 +30,15 @@ import java.util.UUID
 /**
  * ViewModel para a tela de chat.
  *
- * @property chatRepo Repositório para operações relacionadas a chats.
  * @property authRemote Repositório para operações de autenticação.
+ * @property chatRepo Repositório para operações relacionadas a chats.
  * @property usuarioRepo Repositório para operações relacionadas a usuários.
- * @property savedStateHandle Handle para o estado salvo da ViewModel.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ChatViewModel(
-    private val chatRepo: ChatRepository,
     authRemote: AuthRemote,
+    private val chatRepo: ChatRepository,
     private val usuarioRepo: UsuarioRepository,
-    private val localRepo: LocalRepository,
 ) : ViewModel() {
     /**
      * O UID do destinatário (usuário selecionado na lista de chats).
@@ -67,7 +64,7 @@ class ChatViewModel(
     /**
      * O UID do autor (usuário logado).
      */
-    val autorUid: StateFlow<String?> = authRemote.usuarioState
+    val autorUid: StateFlow<String?> = authRemote.usuario
         .map { it?.uid }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
@@ -82,8 +79,8 @@ class ChatViewModel(
             val salaId = gerarSalaId(meuUid, contatoUid)
             combine(
                 carregarMsgsFlow(salaId),
-                carregarContatoFlow(contatoUid)
-            ) { msgs, contato -> Pair(msgs, contato) }
+                carregarContatoFlow(contatoUid),
+            ) { msgs, contato -> Triple(msgs, contato, meuUid) }
         }
 
     /**
@@ -92,10 +89,11 @@ class ChatViewModel(
     val uiState: StateFlow<ChatUiState> = combine(
         dadosChatFlow,
         _carregando
-    ) { (msgs, contato), carregando ->
+    ) { (msgs, contato, autorUid), carregando ->
         ChatUiState(
             msgs = msgs,
             contato = contato,
+            autorUid = autorUid,
             carregando = carregando,
             carregandoFoto = contato?.foto == null
         )
@@ -117,7 +115,7 @@ class ChatViewModel(
      * @return Um fluxo de mensagens do chat.
      */
     private fun carregarMsgsFlow(salaId: String): Flow<List<MensagemDTO>> {
-        return chatRepo.carregarMsgs(salaId)
+        return chatRepo.getMsgsBySalaId(salaId)
             .onEach { msgs -> marcarMsgsComoLidas(salaId, msgs) }
             .catch { e ->
                 Log.e("ChatViewModel", "carregarMsgsFlow: ${e.message}")
@@ -126,8 +124,14 @@ class ChatViewModel(
             }
     }
 
+    /**
+     * Carrega as informações do contato.
+     *
+     * @param uid O UID do contato.
+     * @return Um [Flow] de informações do contato.
+     */
     private fun carregarContatoFlow(uid: String): Flow<UsuarioDTO?> {
-        return usuarioRepo.carregarUsuario(uid)
+        return usuarioRepo.getUsuario(uid)
             .catch {
                 Log.e("ChatViewModel", "carregarContatoFlow: ${it.message}")
                 emit(null)
@@ -155,6 +159,7 @@ class ChatViewModel(
         )
 
         val chatResumo = ChatDTO(
+            salaId = salaId,
             ultimaMsg = novaMsg,
             ultimoTimestamp = novaMsg.timestamp,
             participantes = listOf(autorUid, contato),
@@ -164,7 +169,7 @@ class ChatViewModel(
 
         viewModelScope.launch {
             _carregando.value = true
-            chatRepo.salvarMsg(salaId, novaMsg, chatResumo)
+            chatRepo.insertMsg(novaMsg, chatResumo)
                 .onFailure { e ->
                     Log.e("ChatViewModel", "enviarMsg: ${e.message}")
                     _canal.send("Falha ao enviar: ${e.message}")
@@ -179,14 +184,14 @@ class ChatViewModel(
      * @param msgId O ID da mensagem a ser editada.
      * @param novaMsg A nova mensagem.
      */
-    fun editarMsg(msgId: String, novaMsg: MensagemDTO) {
+    fun editarMsg(novaMsg: MensagemDTO) {
         val meuUid = autorUid.value ?: return
         val contatoUid = _contatoUid.value ?: return
         val salaId = gerarSalaId(meuUid, contatoUid)
 
         viewModelScope.launch {
             _carregando.value = true
-            chatRepo.atualizarMsgs(salaId, msgId, novaMsg)
+            chatRepo.updateMsg(salaId, novaMsg)
                 .onFailure { e ->
                     Log.e("ChatViewModel", "editarMsg: ${e.message}")
                     _canal.send("Falha ao atualizar: ${e.message}")
@@ -207,7 +212,7 @@ class ChatViewModel(
 
         viewModelScope.launch {
             _carregando.value = true
-            chatRepo.deletarMsgs(salaId, msgId)
+            chatRepo.deleteMsg(salaId, msgId)
                 .onFailure { e ->
                     Log.e("ChatViewModel", "excluirMsg: ${e.message}")
                     _canal.send("Falha ao excluir: ${e.message}")
@@ -228,7 +233,7 @@ class ChatViewModel(
 
         if (atualizar) {
             viewModelScope.launch {
-                chatRepo.atualizarMsgsLidas(salaId, contatoUid, true)
+                chatRepo.updateMsgsLidas(salaId, contatoUid, true)
                     .onFailure { e ->
                         Log.e("ChatViewModel", "marcarMsgsComoLidas: ${e.message}")
                         _canal.send("Falha ao marcar como lida: ${e.message}")
@@ -244,21 +249,13 @@ class ChatViewModel(
      */
     fun avaliarUsuario(nota: Double) {
         val meuUid = autorUid.value ?: return
-        val localId = _localId.value ?: return
         val contato = uiState.value.contato ?: return
 
         viewModelScope.launch {
-            usuarioRepo.avaliarUsuario(contato, meuUid, nota)
+            usuarioRepo.updateUsuarioNota(contato, meuUid, nota)
                 .onFailure { e ->
-                    Log.e("ChatViewModel", "confirmarEntrega: ${e.message}")
+                    Log.e("ChatViewModel", "avaliarUsuario: ${e.message}")
                     _canal.send("Falha ao avaliar: ${e.message}")
-                }
-                .onSuccess {
-                    localRepo.marcarComoEntregue(localId)
-                        .onFailure { e ->
-                            Log.e("ChatViewModel", "confirmarEntrega: ${e.message}")
-                            _canal.send("Falha ao confirmar entrega: ${e.message}")
-                        }
                 }
         }
     }

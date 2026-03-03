@@ -19,8 +19,7 @@ import com.example.mapa.R
 import com.example.mapa.ui.theme.MapaTheme
 
 /**
- * Um componente de diálogo de alerta reutilizável para confirmar uma ação de exclusão.
- * Exibe um ícone de aviso, título, mensagem e botões de confirmação e cancelamento.
+ * Componente de diálogo de exclusão.
  *
  * @param visivel Controla se o diálogo está visível ou não.
  * @param titulo O texto a ser exibido como título do diálogo.
@@ -91,9 +90,6 @@ fun DialogExcluir(
     )
 }
 
-/**
- * Preview para o componente [DialogExcluir].
- */
 @Preview
 @Composable
 private fun DialogExcluirPreview() {

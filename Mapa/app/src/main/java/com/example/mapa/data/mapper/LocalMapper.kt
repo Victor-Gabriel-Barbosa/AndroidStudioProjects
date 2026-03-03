@@ -14,11 +14,10 @@ fun LocalDTO.toEntity() = LocalEntity(
     longitude = this.longitude,
     raio = this.raio,
     data = this.data?.time,
-    imgUrls = this.imgUrls.joinToString(separator = "|"),
-    entregue = this.entregue
+    imgUrls = this.imgUrls.joinToString(separator = "|")
 )
 
-fun LocalEntity.toDomain() = LocalDTO(
+fun LocalEntity.toDTO() = LocalDTO(
     id = this.id,
     uid = this.uid,
     nome = this.nome,
@@ -28,6 +27,5 @@ fun LocalEntity.toDomain() = LocalDTO(
     longitude = this.longitude,
     raio = this.raio,
     data = this.data?.let { Date(it) },
-    imgUrls = if (this.imgUrls.isBlank()) emptyList() else this.imgUrls.split("|"),
-    entregue = this.entregue
+    imgUrls = if (this.imgUrls.isBlank()) emptyList() else this.imgUrls.split("|")
 )

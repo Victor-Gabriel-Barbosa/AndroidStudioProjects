@@ -41,12 +41,6 @@ import com.example.mapa.ui.theme.MapaTheme
 /**
  * Componente de carrossel que exibe uma lista de imagens utilizando [HorizontalMultiBrowseCarousel].
  *
- * Funcionalidades:
- * - Exibe imagens em um carrossel horizontal.
- * - Suporta visualização ampliada ao clicar em uma imagem (via [DialogImg]).
- * - Oferece a opção de remover imagens se o callback [onRemoverImg] for fornecido.
- * - Exibe ícones de placeholder e erro durante o carregamento das imagens.
- *
  * @param imgs Lista de strings contendo as URLs ou caminhos das imagens.
  * @param modifier [Modifier] para customizar o layout do container.
  * @param onRemoverImg Callback opcional para tratar a remoção de uma imagem.
@@ -127,9 +121,6 @@ fun CarrosselImgs(
     }
 }
 
-/**
- * Preview do componente [CarrosselImgs] com imagens de exemplo.
- */
 @Preview
 @Composable
 private fun CarrosselImgsPreview() {

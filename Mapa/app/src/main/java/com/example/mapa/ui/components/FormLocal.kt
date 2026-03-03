@@ -61,8 +61,8 @@ import com.example.mapa.R
 import com.example.mapa.data.remote.dto.LocalDTO
 import com.example.mapa.model.TipoLocal
 import com.example.mapa.ui.theme.MapaTheme
-import com.example.mapa.utils.criarUriParaFoto
-import com.example.mapa.utils.labelObrigatorio
+import com.example.mapa.util.criarUriParaFoto
+import com.example.mapa.util.labelObrigatorio
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -70,11 +70,6 @@ import java.util.TimeZone
 
 /**
  * Componente de formulário para adicionar ou editar um local.
- *
- * Este formulário contém campos para nome, tipo (perdido/encontrado), data, descrição,
- * um seletor de raio e um seletor de imagens. Gerencia seu próprio estado interno
- * para os campos de texto e seletores, e utiliza callbacks para notificar eventos
- * como salvar, fechar e alterar o raio.
  *
  * @param titulo O título a ser exibido no cabeçalho do formulário.
  * @param carregando Indica se o estado de carregamento deve ser exibido no botão de salvar.
@@ -428,10 +423,6 @@ fun FormLocal(
     }
 }
 
-/**
- * Preview para o componente [FormLocal].
- * Exibe o formulário no estado de carregamento.
- */
 @Preview(showBackground = true)
 @Composable
 private fun FormLocalPreview() {

@@ -14,7 +14,7 @@ fun UsuarioDTO.toEntity() = UsuarioEntity(
     fcmToken = this.fcmToken
 )
 
-fun UsuarioEntity.toDomain() = UsuarioDTO(
+fun UsuarioEntity.toDTO() = UsuarioDTO(
     uid = this.id,
     nome = this.nome,
     email = this.email,

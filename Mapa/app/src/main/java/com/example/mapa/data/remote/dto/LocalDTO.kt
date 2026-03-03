@@ -18,6 +18,5 @@ data class LocalDTO (
     val longitude: Double = 0.0,
     val raio: Double = 0.0,
     val data: Date? = null,
-    val imgUrls: List<String> = emptyList(),
-    val entregue: Boolean = false
+    val imgUrls: List<String> = emptyList()
 ) : Parcelable

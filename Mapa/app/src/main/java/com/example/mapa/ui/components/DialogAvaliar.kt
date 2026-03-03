@@ -23,7 +23,7 @@ import com.example.mapa.data.remote.dto.UsuarioDTO
 import com.example.mapa.ui.theme.MapaTheme
 
 /**
- * Diálogo para avaliar um usuário.
+ * Componente de diálogo de avaliação de usuário.
  *
  * @param visivel Indica se o diálogo está visível.
  * @param contato O usuário a ser avaliado.
@@ -47,15 +47,15 @@ fun DialogAvaliar(
         modifier = modifier,
         onDismissRequest = onFechar,
         title = {
-            Text(text = "Avaliar ${contato.nome}")
+            Text(text = stringResource(R.string.avaliar_usuario, contato.nome ?: ""))
         },
         text = {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = stringResource(R.string.qual_nota_voc_da_para_a_ajuda),
+                    text = stringResource(R.string.qual_nota_voce_da_para_a_ajuda),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -63,6 +63,11 @@ fun DialogAvaliar(
                 BarraAvalicao(
                     nota = nota,
                     onNotaChange = { nota = it }
+                )
+
+                Text(
+                    text = stringResource(R.string.nota, nota),
+                    style = MaterialTheme.typography.bodySmall,
                 )
             }
         },

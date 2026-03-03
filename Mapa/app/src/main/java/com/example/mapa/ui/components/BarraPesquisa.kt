@@ -23,11 +23,18 @@ import androidx.compose.ui.unit.dp
 import com.example.mapa.R
 import com.example.mapa.ui.theme.MapaTheme
 
+/**
+ * Componente de barra de pesquisa reutilizável.
+ *
+ * @param onPesquisa Callback que é chamado quando o texto de pesquisa é alterado.
+ * @param modifier [Modifier] para customizar o layout, tamanho e comportamento do componente.
+ */
 @Composable
 fun BarraPesquisa(
     onPesquisa: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Estado para armazenar o texto de pesquisa
     var pesquisa by rememberSaveable { mutableStateOf("") }
 
     OutlinedTextField(

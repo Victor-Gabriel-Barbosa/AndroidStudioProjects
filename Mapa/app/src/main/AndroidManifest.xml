@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" tools:ignore="BackgroundLocationPolicy" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
+        android:name=".MapaApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -15,8 +15,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Mapa"
-        android:name=".MapaApplication">
+        android:theme="@style/Theme.Mapa">
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"
@@ -37,7 +36,7 @@
         </provider>
 
         <service
-            android:name=".service.MeuFirebaseMessagingService"
+            android:name=".service.AppFirebaseMessagingService"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
@@ -45,15 +44,14 @@
         </service>
 
         <receiver
-            android:name=".service.GeofenceReceiver"
+            android:name=".receiver.GeofenceReceiver"
             android:exported="false" />
 
         <activity
             android:name=".MainActivity"
-            android:windowSoftInputMode="adjustResize"
             android:exported="true"
-            android:label="@string/app_name"
-            android:theme="@style/Theme.Mapa">
+            android:theme="@style/Theme.Mapa"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

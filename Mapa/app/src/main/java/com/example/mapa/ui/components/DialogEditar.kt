@@ -18,7 +18,17 @@ import com.example.mapa.R
 import com.example.mapa.ui.theme.MapaTheme
 
 /**
- * Diálogo de edição de texto.
+ * Componente de diálogo de edição de texto.
+ *
+ * @param modifier Modificador para personalização.
+ * @param visivel Indica se o diálogo está visível.
+ * @param textoInicial Texto inicial para edição.
+ * @param titulo Título do diálogo.
+ * @param label Rótulo do campo de texto.
+ * @param onFechar Ação a ser executada ao fechar o diálogo.
+ * @param onConfirmar Ação a ser executada ao confirmar a edição.
+ * @param textoConfirmar Texto do botão de confirmação.
+ * @param textoCancelar Texto do botão de cancelamento.
  */
 @Composable
 fun DialogEditar(
