@@ -27,12 +27,12 @@ import com.example.mapa.ui.theme.MapaTheme
 /**
  * Componente que exibe a imagem de perfil do usuário em formato circular.
  *
- * @param foto URL ou caminho da imagem de perfil. Se nulo, exibirá o estado de erro.
+ * @param photoUrl URL ou caminho da imagem de perfil. Se nulo, exibirá o estado de erro.
  * @param modifier [Modifier] para customizar o layout, tamanho e comportamento do componente.
  */
 @Composable
 fun AvatarImg(
-    foto: String?,
+    photoUrl: String?,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -42,7 +42,7 @@ fun AvatarImg(
         SubcomposeAsyncImage(
             model = ImageRequest
                 .Builder(LocalContext.current)
-                .data(foto)
+                .data(photoUrl)
                 .crossfade(true)
                 .build(),
             contentDescription = stringResource(R.string.foto_de_perfil),
@@ -52,7 +52,7 @@ fun AvatarImg(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    AnimacaoCarregando()
+                    LoadingAnimation()
                 }
             },
             error = {
@@ -80,7 +80,7 @@ fun AvatarImg(
 private fun AvatarImgPreview() {
     MapaTheme {
         AvatarImg(
-            foto = "https://placekitten.com/200/200",
+            photoUrl = "https://placekitten.com/200/200",
             modifier = Modifier.size(48.dp)
         )
     }

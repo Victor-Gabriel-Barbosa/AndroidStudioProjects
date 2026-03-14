@@ -1,7 +1,7 @@
 package com.example.mapa.model
 
 import android.os.Parcelable
-import com.example.mapa.data.remote.dto.LocalDTO
+import com.example.mapa.data.remote.dto.LocationDTO
 import com.google.android.gms.maps.model.LatLng
 import kotlinx.parcelize.Parcelize
 
@@ -10,19 +10,19 @@ import kotlinx.parcelize.Parcelize
  */
 @Parcelize
 sealed interface SheetUiState : Parcelable {
-    data object Escondido : SheetUiState
+    data object Hidden : SheetUiState
 
-    data class Adicionando(
-        val posicao: LatLng,
-        val raio: Double = 50.0
+    data class Adding(
+        val latLng: LatLng,
+        val radius: Double = 50.0
     ) : SheetUiState
 
-    data class Visualizando(
-        val local: LocalDTO
+    data class Viewing(
+        val location: LocationDTO
     ) : SheetUiState
 
-    data class Editando(
-        val local: LocalDTO,
-        val raio: Double = local.raio
+    data class Editing(
+        val location: LocationDTO,
+        val radius: Double = location.radius
     ) : SheetUiState
 }

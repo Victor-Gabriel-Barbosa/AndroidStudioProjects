@@ -23,8 +23,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -54,70 +56,79 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+// Função para ler sensores do dispositivo
+@Composable
+fun rememberSensorState(type: Int): FloatArray {
+    val context = LocalContext.current
+    val sensorManager = remember {
+        context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+    }
+    var values by remember { mutableStateOf(FloatArray(3)) }
+
+    DisposableEffect(type) {
+        val sensor = sensorManager.getDefaultSensor(type)
+        val listener = object : SensorEventListener {
+            override fun onSensorChanged(e: SensorEvent?) {
+                values = e?.values?.copyOf() ?: return
+            }
+
+            override fun onAccuracyChanged(s: Sensor?, a: Int) {}
+        }
+
+        sensorManager.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_GAME)
+
+        onDispose { sensorManager.unregisterListener(listener) }
+    }
+    return values
+}
+
 @Composable
 fun Bussola(modifier: Modifier = Modifier) {
-    val context = LocalContext.current
-
     // Estado para guardar o ângulo (azimute)
     var azimuth by remember { mutableFloatStateOf(0f) }
 
-    // Animação para suavizar o movimento da agulha
-    val azimuthAnimacao by animateFloatAsState(
-        targetValue = -azimuth,
-        animationSpec = tween(durationMillis = 100),
-        label = "Compass Animation"
-    )
+    // Estado para guardar a rotação contínua
+    var rotacaoAtual by remember { mutableFloatStateOf(0f) }
 
-    // Lógica do Sensor
-    DisposableEffect(Unit) {
-        val sensor = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
-        val acelerometro = sensor.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-        val magnetometro = sensor.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
+    // Lendo sensores de gravidade e geomagnetismo
+    val gravidade = rememberSensorState(type = Sensor.TYPE_ACCELEROMETER)
+    val geomagnetico = rememberSensorState(type = Sensor.TYPE_MAGNETIC_FIELD)
 
-        val gravidade = FloatArray(3)
-        val geomagnetico = FloatArray(3)
+    // Calcula o ângulo (azimute) com base nos sensores
+    LaunchedEffect(gravidade, geomagnetico) {
+        val r = FloatArray(9)
+        val i = FloatArray(9)
 
-        val sensorEventListener = object : SensorEventListener {
-            override fun onSensorChanged(event: SensorEvent) {
-                if (event.sensor.type == Sensor.TYPE_ACCELEROMETER) {
-                    System.arraycopy(event.values, 0, gravidade, 0, event.values.size)
-                } else if (event.sensor.type == Sensor.TYPE_MAGNETIC_FIELD) {
-                    System.arraycopy(event.values, 0, geomagnetico, 0, event.values.size)
-                }
+        if (SensorManager.getRotationMatrix(r, i, gravidade, geomagnetico)) {
+            val orientacao = FloatArray(3)
+            SensorManager.getOrientation(r, orientacao)
 
-                val r = FloatArray(9)
-                val i = FloatArray(9)
+            var graus = Math.toDegrees(orientacao[0].toDouble()).toFloat()
+            graus = (graus + 360) % 360
 
-                // Calcula a matriz de rotação
-                if (SensorManager.getRotationMatrix(r, i, gravidade, geomagnetico)) {
-                    val orientacao = FloatArray(3)
-                    SensorManager.getOrientation(r, orientacao)
+            // Compara o grau atual com o destino e ajusta para não dar a volta completa
+            var diff = graus - (rotacaoAtual % 360f)
+            if (diff < -180f) diff += 360f
+            if (diff > 180f) diff -= 360f
 
-                    // Converte radianos para graus
-                    var graus = Math.toDegrees(orientacao[0].toDouble()).toFloat()
+            rotacaoAtual += diff
 
-                    // Normaliza para 0-360
-                    graus = (graus + 360) % 360
-                    azimuth = graus
-                }
-            }
-
-            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
-        }
-
-        sensor.registerListener(sensorEventListener, acelerometro, SensorManager.SENSOR_DELAY_GAME)
-        sensor.registerListener(sensorEventListener, magnetometro, SensorManager.SENSOR_DELAY_GAME)
-
-        onDispose {
-            sensor.unregisterListener(sensorEventListener)
+            // Atualiza o azimute real para mostrar no texto (0 a 360)
+            azimuth = graus
         }
     }
 
-    // UI da Bússola
+    // Animação suavizada usando a rotação contínua
+    val azimuthAnimacao by animateFloatAsState(
+        targetValue = -rotacaoAtual,
+        animationSpec = tween(durationMillis = 150)
+    )
+
+    // UI da bússola
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFF1E1E1E)), // Fundo escuro
+            .background(Color(0xFF1E1E1E)),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -135,13 +146,13 @@ fun Bussola(modifier: Modifier = Modifier) {
             modifier = Modifier.padding(bottom = 32.dp)
         )
 
-        // Desenhando a Bússola
+        // Desenha a bússola
         Box(modifier = Modifier.size(300.dp), contentAlignment = Alignment.Center) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val centro = Offset(size.width / 2, size.height / 2)
                 val raio = size.minDimension / 2
 
-                // Rotaciona o Canvas baseado no azimute
+                // Rotaciona o canvas baseado no azimute animado
                 withTransform({
                     rotate(azimuthAnimacao, centro)
                 }) {
@@ -171,7 +182,7 @@ fun Bussola(modifier: Modifier = Modifier) {
                         )
                         // Leste/Oeste (Marcas menores)
                         drawLine(
-                            Color.Gray,
+                            Color.DarkGray,
                             Offset(centro.x - raio + 20, centro.y),
                             Offset(centro.x + raio - 20, centro.y),
                             strokeWidth = 4.dp.toPx()

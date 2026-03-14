@@ -8,10 +8,10 @@ import kotlinx.parcelize.Parcelize
  */
 @Parcelize
 data class ChatDTO (
-    val salaId: String = "",
-    val ultimaMsg: MensagemDTO? = null,
-    val ultimoTimestamp: Long = System.currentTimeMillis(),
-    val participantes: List<String> = emptyList(),
-    val visivelPara: List<String> = emptyList(),
-    val localId: String = ""
+    val id: String = "",
+    val lastMsg: MsgDTO? = null,
+    val lastTimestamp: Long = System.currentTimeMillis(),
+    val participants: List<String> = emptyList(),
+    val visibleTo: List<String> = emptyList(),
+    val locationId: String = ""
 ) : Parcelable

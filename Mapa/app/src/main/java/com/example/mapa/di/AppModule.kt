@@ -6,17 +6,17 @@ import com.example.mapa.data.remote.datasource.AuthRemote
 import com.example.mapa.data.remote.firebase.AuthFirebase
 import com.example.mapa.data.remote.datasource.ChatRemote
 import com.example.mapa.data.remote.firebase.ChatFirebase
-import com.example.mapa.data.remote.datasource.LocalRemote
-import com.example.mapa.data.remote.firebase.LocalFirebase
-import com.example.mapa.data.remote.datasource.UsuarioRemote
-import com.example.mapa.data.remote.firebase.UsuarioFirebase
+import com.example.mapa.data.remote.datasource.LocationRemote
+import com.example.mapa.data.remote.firebase.LocationFirebase
+import com.example.mapa.data.remote.datasource.UserRemote
+import com.example.mapa.data.remote.firebase.UserFirebase
 import com.example.mapa.data.repository.ChatRepository
-import com.example.mapa.data.repository.LocalRepository
-import com.example.mapa.data.repository.UsuarioRepository
+import com.example.mapa.data.repository.LocationRepository
+import com.example.mapa.data.repository.UserRepository
 import com.example.mapa.viewmodels.AuthViewModel
 import com.example.mapa.viewmodels.ChatListViewModel
 import com.example.mapa.viewmodels.ChatViewModel
-import com.example.mapa.viewmodels.LocalViewModel
+import com.example.mapa.viewmodels.LocationViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.messaging.FirebaseMessaging
@@ -42,29 +42,29 @@ val appModule = module {
             AppDatabase::class.java,
             "mapa_database.db"
         )
-            .fallbackToDestructiveMigration(false)
+            .fallbackToDestructiveMigration(true)
             .build()
     }
 
     // DAOs
-    single { get<AppDatabase>().usuarioDao() }
-    single { get<AppDatabase>().localDao() }
+    single { get<AppDatabase>().userDao() }
+    single { get<AppDatabase>().locationDao() }
     single { get<AppDatabase>().chatDao() }
 
     // Remotes
     single<AuthRemote> { AuthFirebase(get()) }
-    single<UsuarioRemote> { UsuarioFirebase(get(), get()) }
-    single<LocalRemote> { LocalFirebase(get(), get()) }
+    single<UserRemote> { UserFirebase(get(), get()) }
+    single<LocationRemote> { LocationFirebase(get(), get()) }
     single<ChatRemote> { ChatFirebase(get(), get()) }
 
     // Repositories
-    single { UsuarioRepository(get(), get(),  get()) }
-    single { LocalRepository(get(), get()) }
+    single { UserRepository(get(), get(),  get()) }
+    single { LocationRepository(get(), get()) }
     single { ChatRepository(get(), get()) }
 
     // ViewModels
-    viewModel { AuthViewModel(get(), get(), get()) }
-    viewModel { LocalViewModel(get(), get()) }
+    viewModel { AuthViewModel(get(), get()) }
+    viewModel { LocationViewModel(get(), get()) }
     viewModel { ChatViewModel(get(), get(), get()) }
     viewModel { ChatListViewModel(get(), get(), get()) }
 }

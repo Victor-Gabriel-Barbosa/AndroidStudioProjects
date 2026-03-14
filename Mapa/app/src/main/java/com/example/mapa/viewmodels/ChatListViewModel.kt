@@ -4,10 +4,11 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mapa.data.remote.datasource.AuthRemote
+import com.example.mapa.data.remote.dto.ChatDTO
 import com.example.mapa.model.ChatItem
 import com.example.mapa.model.ChatListUiState
 import com.example.mapa.data.repository.ChatRepository
-import com.example.mapa.data.repository.UsuarioRepository
+import com.example.mapa.data.repository.UserRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -28,17 +29,17 @@ import kotlinx.coroutines.launch
  *
  * @property authRemote Repositório para operações de autenticação.
  * @property chatRepo Repositório para operações relacionadas a chats.
- * @property usuarioRepo Repositório para operações relacionadas a usuários.
+ * @property userRepo Repositório para operações relacionadas a usuários.
  */
 class ChatListViewModel(
     authRemote: AuthRemote,
     private val chatRepo: ChatRepository,
-    private val usuarioRepo: UsuarioRepository
+    private val userRepo: UserRepository
 ) : ViewModel() {
     /**
      * O UID do usuário logado.
      */
-    private val autorUid: StateFlow<String?> = authRemote.usuario
+    private val authorUid: StateFlow<String?> = authRemote.user
         .map { it?.uid }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
@@ -48,14 +49,13 @@ class ChatListViewModel(
      * Este [StateFlow] é a fonte de verdade para os dados exibidos na lista.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val chatItems: StateFlow<List<ChatItem>> = autorUid
+    private val chatItems: StateFlow<List<ChatItem>> = authorUid
         .filterNotNull()
         .flatMapLatest(::buildChatItems)
         .catch { e ->
             Log.e("ChatListViewModel", "chatItems: ${e.message}")
             emit(emptyList())
-        }
-        .stateIn(
+        }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
@@ -67,12 +67,12 @@ class ChatListViewModel(
      * Este [StateFlow] emite a quantidade de mensagens não lidas do usuário.
      * Se o usuário não estiver logado, emite 0.
      */
-    val qtdNaoLidas: StateFlow<Int> = combine(autorUid, chatItems) { meuUid, items ->
-        val uid = meuUid ?: return@combine 0
+    val unreadCount: StateFlow<Int> = combine(authorUid, chatItems) { myUid, items ->
+        val uid = myUid ?: return@combine 0
         items.count { item ->
-            val naoLido = !(item.chat.ultimaMsg?.lido ?: true)
-            val msgDeOutro = item.chat.ultimaMsg?.autorUid != uid
-            naoLido && msgDeOutro
+            val unread = !(item.chat.lastMsg?.read ?: true)
+            val nonOwner = item.chat.lastMsg?.uid != uid
+            unread && nonOwner
         }
     }
         .distinctUntilChanged()
@@ -90,20 +90,19 @@ class ChatListViewModel(
      */
     val uiState: StateFlow<ChatListUiState> = chatItems
         .map { chats ->
-            val chatsOrdenados = chats.sortedByDescending { it.chat.ultimoTimestamp }
-            ChatListUiState(chats = chatsOrdenados, carregando = false, erro = null)
+            ChatListUiState(chats = chats.sortedByDescending { it.chat.lastTimestamp }, loading = false, error = null)
         }
         .onStart {
-            emit(ChatListUiState(carregando = true))
+            emit(ChatListUiState(loading = true))
         }
         .catch { e ->
             Log.e("ChatListViewModel", "uiState: ${e.message}")
-            emit(ChatListUiState(carregando = false, erro = e.message ?: "Erro desconhecido"))
+            emit(ChatListUiState(loading = false, error = e.message ?: "Erro desconhecido"))
         }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = ChatListUiState(carregando = true)
+            initialValue = ChatListUiState(loading = true)
         )
 
     /**
@@ -114,10 +113,10 @@ class ChatListViewModel(
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun buildChatItems(uid: String): Flow<List<ChatItem>> {
-        return chatRepo.getChatsByUid(uid).flatMapLatest { listaDeChats ->
-            if (listaDeChats.isEmpty()) flowOf(emptyList())
+        return chatRepo.getChats(uid).flatMapLatest { chats ->
+            if (chats.isEmpty()) flowOf(emptyList())
             else {
-                val flows = listaDeChats.map { chat -> chatItemFlow(chat, uid) }
+                val flows = chats.map { chat -> chatItemFlow(chat, uid) }
                 combine(flows) { it.toList() }
             }
         }
@@ -127,28 +126,28 @@ class ChatListViewModel(
      * Cria um [Flow] que emite um [ChatItem] a partir de um chat e do UID do usuário logado.
      *
      * @param chat O chat que será exibido.
-     * @param autorUid O UID do usuário logado.
+     * @param authorUid O UID do usuário logado.
      * @return Um [Flow] que emite o [ChatItem] correspondente.
      */
-    private fun chatItemFlow(chat: com.example.mapa.data.remote.dto.ChatDTO, autorUid: String): Flow<ChatItem> {
-        val contatoUid = chat.participantes.find { it != autorUid } ?: ""
+    private fun chatItemFlow(chat: ChatDTO, authorUid: String): Flow<ChatItem> {
+        val contactUid = chat.participants.find { it != authorUid } ?: ""
 
-        return usuarioRepo.getUsuario(contatoUid)
+        return userRepo.getUser(contactUid)
             .onStart {
-                if (contatoUid.isNotEmpty()) {
+                if (contactUid.isNotEmpty()) {
                     viewModelScope.launch {
                         try {
-                            usuarioRepo.syncContato(contatoUid)
+                            userRepo.syncUser(contactUid)
                         } catch (e: Exception) {
                             Log.e("ChatListViewModel", "Erro sync contato: ${e.message}")
                         }
                     }
                 }
             }
-            .map { usuario ->
+            .map { user ->
                 ChatItem(
                     chat = chat,
-                    contato = usuario
+                    contact = user
                 )
             }
     }
@@ -156,17 +155,15 @@ class ChatListViewModel(
     /**
      * "Exclui" múltiplas conversas do usuário (oculta).
      *
-     * @param salaIds Um conjunto de IDs de salas de chat a serem excluídas.
+     * @param ids Um conjunto de IDs de salas de chat a serem excluídas.
      */
-    fun excluirConversas(salaIds: Set<String>) {
-        val uid = autorUid.value ?: return
+    fun deleteMsg(ids: Set<String>) {
+        val uid = authorUid.value ?: return
 
         viewModelScope.launch {
-            salaIds.forEach { salaId ->
-                chatRepo.deleteChat(salaId, uid)
-                    .onFailure { e ->
-                        Log.e("ChatListViewModel", "Erro ao ocultar: ${e.message}")
-                    }
+            ids.forEach { id ->
+                chatRepo.deleteChat(id, uid)
+                    .onFailure { e -> Log.e("ChatListViewModel", "Erro ao ocultar: ${e.message}") }
             }
         }
     }

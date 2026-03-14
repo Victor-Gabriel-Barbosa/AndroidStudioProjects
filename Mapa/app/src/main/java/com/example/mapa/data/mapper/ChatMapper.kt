@@ -2,38 +2,38 @@ package com.example.mapa.data.mapper
 
 import com.example.mapa.data.local.entity.ChatEntity
 import com.example.mapa.data.remote.dto.ChatDTO
-import com.example.mapa.data.remote.dto.MensagemDTO
+import com.example.mapa.data.remote.dto.MsgDTO
 
 fun ChatDTO.toEntity(): ChatEntity {
     return ChatEntity(
-        salaId = this.salaId,
-        ultimoTimestamp = this.ultimoTimestamp,
-        participantes = this.participantes.joinToString(separator = "|"),
-        visivelPara = this.visivelPara.joinToString(separator = "|"),
-        ultimaMsgAutorUid = this.ultimaMsg?.autorUid,
-        ultimaMsgTexto = this.ultimaMsg?.texto,
-        ultimaMsgTimestamp = this.ultimaMsg?.timestamp,
-        ultimaMsgLido = this.ultimaMsg?.lido,
-        localId = this.localId
+        id = this.id,
+        lastTimestamp = this.lastTimestamp,
+        participants = this.participants.joinToString(separator = "|"),
+        visibleTo = this.visibleTo.joinToString(separator = "|"),
+        lastMsgUid = this.lastMsg?.uid,
+        lastMsgText = this.lastMsg?.text,
+        lastMsgTimestamp = this.lastMsg?.timestamp,
+        lastMsgRead = this.lastMsg?.read,
+        locationId = this.locationId
     )
 }
 
 fun ChatEntity.toDTO(): ChatDTO {
-    val ultimaMsg = if (ultimaMsgAutorUid != null) {
-        MensagemDTO(
-            autorUid = ultimaMsgAutorUid,
-            texto = ultimaMsgTexto ?: "",
-            timestamp = ultimaMsgTimestamp ?: 0L,
-            lido = ultimaMsgLido ?: false
+    val ultimaMsg = if (lastMsgUid != null) {
+        MsgDTO(
+            uid = lastMsgUid,
+            text = lastMsgText ?: "",
+            timestamp = lastMsgTimestamp ?: 0L,
+            read = lastMsgRead ?: false
         )
     } else null
 
     return ChatDTO(
-        salaId = this.salaId,
-        ultimoTimestamp = this.ultimoTimestamp,
-        participantes = if (this.participantes.isBlank()) emptyList() else this.participantes.split("|"),
-        visivelPara = if (this.visivelPara.isBlank()) emptyList() else this.visivelPara.split("|"),
-        ultimaMsg = ultimaMsg,
-        localId = this.localId
+        id = this.id,
+        lastTimestamp = this.lastTimestamp,
+        participants = if (this.participants.isBlank()) emptyList() else this.participants.split("|"),
+        visibleTo = if (this.visibleTo.isBlank()) emptyList() else this.visibleTo.split("|"),
+        lastMsg = ultimaMsg,
+        locationId = this.locationId
     )
 }

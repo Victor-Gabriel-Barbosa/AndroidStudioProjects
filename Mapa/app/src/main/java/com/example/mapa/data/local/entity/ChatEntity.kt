@@ -8,13 +8,13 @@ import androidx.room.PrimaryKey
  */
 @Entity(tableName = "chat")
 data class ChatEntity(
-    @PrimaryKey val salaId: String,
-    val ultimoTimestamp: Long,
-    val participantes: String,
-    val visivelPara: String,
-    val ultimaMsgAutorUid: String?,
-    val ultimaMsgTexto: String?,
-    val ultimaMsgTimestamp: Long?,
-    val ultimaMsgLido: Boolean?,
-    val localId: String
+    @PrimaryKey val id: String,
+    val lastTimestamp: Long,
+    val participants: String,
+    val visibleTo: String,
+    val lastMsgUid: String?,
+    val lastMsgText: String?,
+    val lastMsgTimestamp: Long?,
+    val lastMsgRead: Boolean?,
+    val locationId: String
 )

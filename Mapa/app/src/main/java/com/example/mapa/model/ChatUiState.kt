@@ -1,8 +1,8 @@
 package com.example.mapa.model
 
 import android.os.Parcelable
-import com.example.mapa.data.remote.dto.MensagemDTO
-import com.example.mapa.data.remote.dto.UsuarioDTO
+import com.example.mapa.data.remote.dto.MsgDTO
+import com.example.mapa.data.remote.dto.UserDTO
 import kotlinx.parcelize.Parcelize
 
 /**
@@ -10,10 +10,10 @@ import kotlinx.parcelize.Parcelize
  */
 @Parcelize
 data class ChatUiState(
-    val msgs: List<MensagemDTO> = emptyList(),
-    val contato: UsuarioDTO? = null,
-    val autorUid: String? = null,
-    val carregando: Boolean = false,
-    val carregandoFoto: Boolean = false,
-    val erro: String? = null
+    val msgs: List<MsgDTO> = emptyList(),
+    val contact: UserDTO? = null,
+    val uid: String? = null,
+    val loading: Boolean = false,
+    val loadingPhoto: Boolean = false,
+    val error: String? = null
 ) : Parcelable

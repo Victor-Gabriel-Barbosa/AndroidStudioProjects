@@ -7,171 +7,171 @@ const admin = require("firebase-admin");
 
 admin.initializeApp();
 
-exports.limparImagensOrfans = onDocumentWritten("locais/{localId}", async (event) => {
+exports.cleanOrphanImgs = onDocumentWritten("locations/{locationId}", async (event) => {
     if (!event.data) return;
 
     // Pega os dados de antes e depois
-    const dadosAntigos = event.data.before.data() || {};
-    const dadosNovos = event.data.after.data() || {};
+    const oldData = event.data.before.data() || {};
+    const newData = event.data.after.data() || {};
 
     // Garante que sejam arrays
-    const urlsAntigas = dadosAntigos.imgUrls || [];
-    const urlsNovas = dadosNovos.imgUrls || [];
+    const oldUrls = oldData.imgUrls || [];
+    const newUrls = newData.imgUrls || [];
 
     // Filtra o que foi removido
-    const urlsParaDeletar = urlsAntigas.filter(url => !urlsNovas.includes(url));
+    const urlsToDelete = oldUrls.filter(url => !newUrls.includes(url));
 
-    if (urlsParaDeletar.length === 0) {
+    if (urlsToDelete.length === 0) {
         logger.info("Nenhuma imagem para limpar.");
         return;
     }
 
-    logger.info(`Encontradas ${urlsParaDeletar.length} imagens para deletar.`);
+    logger.info(`Encontradas ${urlsToDelete.length} imagens para deletar.`);
 
     const bucket = admin.storage().bucket();
-    const promessas = [];
+    const promises = [];
 
-    urlsParaDeletar.forEach(url => {
+    urlsToDelete.forEach(url => {
         try {
             // Regex para extrair o caminho do arquivo
             const regex = /o\/(.*?)\?/;
             const match = url.match(regex);
 
             if (match && match[1]) {
-                const caminhoArquivo = decodeURIComponent(match[1]);
-                logger.info(`Deletando: ${caminhoArquivo}`);
-                promessas.push(bucket.file(caminhoArquivo).delete());
+                const filePath = decodeURIComponent(match[1]);
+                logger.info(`Deletando: ${filePath}`);
+                promises.push(bucket.file(filePath).delete());
             } else logger.warn(`Não foi possível extrair caminho da URL: ${url}`);
-        } catch (erro) {
-            logger.error(`Erro ao processar URL ${url}:`, erro);
+        } catch (error) {
+            logger.error(`Erro ao processar URL ${url}:`, error);
         }
     });
 
-    return Promise.all(promessas);
+    return Promise.all(promises);
 });
 
-exports.limparImagensMensagens = onDocumentWritten("chats/{salaId}/mensagens/{mensagemId}", async (event) => {
+exports.cleanMsgImgs = onDocumentWritten("chats/{id}/msgs/{msgId}", async (event) => {
     // Verificação de segurança padrão
     if (!event.data) return;
 
     // Pega os dados de antes e depois
-    const dadosAntigos = event.data.before.data() || {};
-    const dadosNovos = event.data.after.data() || {};
+    const oldData = event.data.before.data() || {};
+    const newData = event.data.after.data() || {};
 
     // Garante que sejam arrays de URLs
-    const urlsAntigas = dadosAntigos.imgUrls || [];
-    const urlsNovas = dadosNovos.imgUrls || [];
+    const oldUrls = oldData.imgUrls || [];
+    const newUrls = newData.imgUrls || [];
 
     // Filtra: O que existia antes e NÃO existe mais agora?
-    const urlsParaDeletar = urlsAntigas.filter(url => !urlsNovas.includes(url));
+    const urlsToDelete = oldUrls.filter(url => !newUrls.includes(url));
 
-    if (urlsParaDeletar.length === 0) {
+    if (urlsToDelete.length === 0) {
         logger.info("Nenhuma imagem para limpar.");
         return;
     }
 
-    logger.info(`Limpando ${urlsParaDeletar.length} imagens da mensagem ${event.params.mensagemId}`);
+    logger.info(`Limpando ${urlsToDelete.length} imagens da mensagem ${event.params.msgId}`);
 
     const bucket = admin.storage().bucket();
-    const promessas = [];
+    const promises = [];
 
-    urlsParaDeletar.forEach(url => {
+    urlsToDelete.forEach(url => {
         try {
             const regex = /o\/(.*?)\?/;
             const match = url.match(regex);
 
             if (match && match[1]) {
-                const caminhoArquivo = decodeURIComponent(match[1]);
-                logger.info(`Deletando imagem de chat: ${caminhoArquivo}`);
-                promessas.push(bucket.file(caminhoArquivo).delete());
+                const filePath = decodeURIComponent(match[1]);
+                logger.info(`Deletando imagem de chat: ${filePath}`);
+                promises.push(bucket.file(filePath).delete());
             }
-        } catch (erro) {
-            logger.error(`Erro ao processar URL de chat ${url}:`, erro);
+        } catch (error) {
+            logger.error(`Erro ao processar URL de chat ${url}:`, error);
         }
     });
 
-    return Promise.all(promessas);
+    return Promise.all(promises);
 });
 
-exports.atualizarResumoChat = onDocumentWritten("chats/{salaId}/mensagens/{mensagemId}", async (event) => {
+exports.updateChatSummary = onDocumentWritten("chats/{id}/msgs/{msgId}", async (event) => {
     // Se o documento foi deletado, não faz nada
     if (!event.data) return;
 
-    const salaId = event.params.salaId;
+    const id = event.params.id;
     const db = admin.firestore();
 
     // Referência para a coleção de chats e mensagens do chat
-    const chatRef = db.collection("chats").doc(salaId);
-    const mensagensRef = chatRef.collection("mensagens");
+    const chatRef = db.collection("chats").doc(id);
+    const msgRef = chatRef.collection("msgs");
 
     try {
       // Busca qual é a mensagem mais recente
       const chatSnap = await chatRef.get();
       if (!chatSnap.exists) {
-        logger.info(`Chat ${salaId} não existe mais. Ignorando resumo.`);
+        logger.info(`Chat ${id} não existe mais. Ignorando resumo.`);
         return;
       }
 
       const chatData = chatSnap.data() || {};
 
       // Se o chat estiver sendo deletado, não atualiza o resumo
-      if (chatData.deletando === true) {
-        logger.info(`Chat ${salaId} está sendo deletado. Ignorando resumo.`);
+      if (chatData.isDeleting === true) {
+        logger.info(`Chat ${id} está sendo deletado. Ignorando resumo.`);
         return;
       }
 
-      const snapshot = await mensagensRef.orderBy("timestamp", "desc").limit(1).get();
+      const snapshot = await msgRef.orderBy("timestamp", "desc").limit(1).get();
 
       if (snapshot.empty) {
-        await chatRef.update({ ultimaMsg: null, ultimoTimestamp: 0 });
+        await chatRef.update({ lastMsg: null, lastTimestamp: 0 });
         return;
       }
 
       const doc = snapshot.docs[0];
-      const ultimaMsg = { id: doc.id, ...doc.data() };
+      const lastMsg = { id: doc.id, ...doc.data() };
 
-      // Atualiza o resumo do chat
+      // Atualiza o resumo do chat com as chaves do ChatDTO em inglês
       await chatRef.update({
-        ultimaMsg,
-        ultimoTimestamp: ultimaMsg.timestamp ?? 0,
+        lastMsg: lastMsg,
+        lastTimestamp: lastMsg.timestamp ?? 0,
       });
-    } catch (erro) {
-      logger.error(`Erro ao atualizar resumo do chat ${salaId}:`, erro);
+    } catch (error) {
+      logger.error(`Erro ao atualizar resumo do chat ${id}:`, error);
     }
   }
 );
 
-exports.limparChatOculto = onDocumentWritten("chats/{salaId}", async (event) => {
+exports.cleanHiddenChat = onDocumentWritten("chats/{id}", async (event) => {
     // Se o documento foi deletado, não faz nada
     if (!event.data) return;
     if (!event.data.after.exists) return;
 
-    const dadosAntigos = event.data.before.data() || {};
-    const dadosNovos = event.data.after.data() || {};
+    const oldData = event.data.before.data() || {};
+    const newData = event.data.after.data() || {};
 
-    // Evita rodar duas vezes (retrigger por causa do update deletando:true)
-    if (dadosNovos.deletando === true) return;
+    // Evita rodar duas vezes (retrigger por causa do update isDeleting:true)
+    if (newData.isDeleting === true) return;
 
-    const visAntes = Array.isArray(dadosAntigos.visivelPara) ? dadosAntigos.visivelPara : [];
-    const visDepois = Array.isArray(dadosNovos.visivelPara) ? dadosNovos.visivelPara : [];
+    const visBefore = Array.isArray(oldData.visibleTo) ? oldData.visibleTo : [];
+    const visAfter = Array.isArray(newData.visibleTo) ? newData.visibleTo : [];
 
     // Só executa quando o chat ficou oculto para todos (transição)
-    if (!(visAntes.length > 0 && visDepois.length === 0)) return;
+    if (!(visBefore.length > 0 && visAfter.length === 0)) return;
 
-    const salaId = event.params.salaId;
+    const id = event.params.id;
     const db = admin.firestore();
-    const chatRef = db.collection("chats").doc(salaId);
-    const mensagensRef = chatRef.collection("mensagens");
+    const chatRef = db.collection("chats").doc(id);
+    const msgRef = chatRef.collection("msgs");
 
     try {
-        logger.info(`Chat ${salaId} oculto para todos. Iniciando exclusão definitiva.`);
+        logger.info(`Chat ${id} oculto para todos. Iniciando exclusão definitiva.`);
 
-        // Flag pra impedir que atualizarResumoChat mexa nesse chat durante a limpeza
-        await chatRef.update({ deletando: true });
+        // Flag pra impedir que updateChatSummary mexa nesse chat durante a limpeza
+        await chatRef.update({ isDeleting: true });
 
         // Deleta todas as mensagens em lotes
         while (true) {
-          const snapshot = await mensagensRef.limit(500).get();
+          const snapshot = await msgRef.limit(500).get();
           if (snapshot.empty) break;
 
           const batch = db.batch();
@@ -182,71 +182,76 @@ exports.limparChatOculto = onDocumentWritten("chats/{salaId}", async (event) => 
         // Deleta o doc do chat
         await chatRef.delete();
 
-        logger.info(`Chat ${salaId} deletado permanentemente.`);
-    } catch (erro) {
-        logger.error(`Erro ao deletar chat oculto ${salaId}:`, erro);
+        logger.info(`Chat ${id} deletado permanentemente.`);
+    } catch (error) {
+        logger.error(`Erro ao deletar chat oculto ${id}:`, error);
     }
 });
 
-exports.notificarNovaMensagem = onDocumentCreated("chats/{salaId}/mensagens/{mensagemId}", async (event) => {
+exports.notifyNewMsg = onDocumentCreated("chats/{id}/msgs/{msgId}", async (event) => {
     // Só prossegue se tiver dados reais
     if (!event.data) return;
 
-    const msgNova = event.data.data();
-    const salaId = event.params.salaId;
+    const newMsg = event.data.data();
+    const id = event.params.id;
     const db = admin.firestore();
 
     try {
         // Busca os dados do chat para descobrir quem são os participantes
-        const chatSnapshot = await db.collection("chats").doc(salaId).get();
+        const chatSnapshot = await db.collection("chats").doc(id).get();
         if (!chatSnapshot.exists) return;
 
-        const participantes = chatSnapshot.data().participantes || [];
+        const participants = chatSnapshot.data().participants || [];
 
-        // Isola o destinatário (quem NÃO é o autor da mensagem)
-        const destinatarioUid = participantes.find(uid => uid !== msgNova.autorUid);
-        if (!destinatarioUid) {
+        // Isola o destinatário (quem NÃO é o autor da mensagem). 
+        // Usando newMsg.uid conforme o MsgDTO
+        const recipientUid = participants.find(uid => uid !== newMsg.uid);
+        if (!recipientUid) {
             logger.info("Nenhum destinatário encontrado.");
             return;
         }
 
-        // Busca os perfis para pegar o token do destinatário e o nome do remetente
-        const destinatarioSnapshot = await db.collection("usuarios").doc(destinatarioUid).get();
-        const remetenteSnapshot = await db.collection("usuarios").doc(msgNova.autorUid).get();
+        // Busca os perfis para pegar o token do destinatário e o nome do remetente.
+        // Se a coleção mudou para "users", altere aqui.
+        const recipientSnapshot = await db.collection("users").doc(recipientUid).get();
+        const senderSnapshot = await db.collection("users").doc(newMsg.uid).get();
 
-        const tokenFcm = destinatarioSnapshot.data()?.fcmToken;
-        const nomeRemetente = remetenteSnapshot.data()?.nome || "Novo usuário";
+        const fcmToken = recipientSnapshot.data()?.fcmToken;
+        // Buscando 'name' conforme o UserDTO
+        const senderName = senderSnapshot.data()?.name || "Novo usuário";
 
         // Se o destinatário não tiver token salvo, não tem como notificar
-        if (!tokenFcm) {
-            logger.info(`Usuário ${destinatarioUid} não possui token FCM registrado.`);
+        if (!fcmToken) {
+            logger.info(`Usuário ${recipientUid} não possui token FCM registrado.`);
             return;
         }
 
-        // Formata o texto (tratar caso seja só envio de imagem)
-        const corpoNotificacao = msgNova.texto ? msgNova.texto : "📷 Nova imagem recebida";
+        // Formata o texto buscando por 'text' conforme o MsgDTO
+        const notificationBody = newMsg.text ? newMsg.text : "📷 Nova imagem recebida";
 
-        // Busca o localId no documento do chat
-        const localId = chatSnapshot.data()?.localId || "";
+        // Busca o locationId no documento do chat
+        const locationId = chatSnapshot.data()?.locationId || "";
 
-        // Monta a carga útil (payload) da notificação
+        // Pega a primeira imagem da mensagem, se existir, para usar como thumbnail
+        const imgUrl = (Array.isArray(newMsg.imgUrls) && newMsg.imgUrls.length > 0) ? newMsg.imgUrls[0] : "";
+
+        // Monta a carga útil (payload) da notificação com as chaves de data em inglês
         const payload = {
-            token: tokenFcm,
-            notification: {
-                title: nomeRemetente,
-                body: corpoNotificacao
-            },
+            token: fcmToken,
             data: {
-                contatoUid: msgNova.autorUid,
-                localId: localId,
-                tipo: "nova_mensagem"
+                title: senderName,
+                body: notificationBody,  
+                contactUid: newMsg.uid,
+                locationId: locationId,
+                type: "new_message",
+                imageUrl: imgUrl
             }
         };
 
         // Envia a notificação
         const response = await admin.messaging().send(payload);
         logger.info(`Notificação enviada com sucesso! MessageID: ${response}`);
-    } catch (erro) {
-        logger.error(`Erro ao disparar notificação para o chat ${salaId}:`, erro);
+    } catch (error) {
+        logger.error(`Erro ao disparar notificação para o chat ${id}:`, error);
     }
 });

@@ -9,6 +9,6 @@ import kotlinx.parcelize.Parcelize
 @Parcelize
 data class ChatListUiState(
     val chats: List<ChatItem> = emptyList(),
-    val carregando: Boolean = false,
-    val erro: String? = null
+    val loading: Boolean = false,
+    val error: String? = null
 ) : Parcelable

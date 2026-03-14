@@ -2,7 +2,7 @@ package com.example.mapa.model
 
 import android.os.Parcelable
 import com.example.mapa.data.remote.dto.ChatDTO
-import com.example.mapa.data.remote.dto.UsuarioDTO
+import com.example.mapa.data.remote.dto.UserDTO
 import kotlinx.parcelize.Parcelize
 
 /**
@@ -11,5 +11,5 @@ import kotlinx.parcelize.Parcelize
 @Parcelize
 data class ChatItem(
     val chat: ChatDTO,
-    val contato: UsuarioDTO?
+    val contact: UserDTO?
 ) : Parcelable

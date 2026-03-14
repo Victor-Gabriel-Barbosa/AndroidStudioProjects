@@ -41,6 +41,7 @@ room = "2.7.2"
 viewmodelCompose = "2.8.7"
 runtimeVersion = "1.10.3"
 firebaseMessaging = "25.0.1"
+adaptive = "1.2.0"
 
 [libraries]
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanistPermissions" }
@@ -93,6 +94,7 @@ androidx-lifecycle-viewmodel-compose = { group="androidx.lifecycle", name = "lif
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 androidx-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "runtimeVersion" }
 firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging", version.ref = "firebaseMessaging" }
+androidx-compose-adaptive = { group = "androidx.compose.material3.adaptive", name = "adaptive", version.ref = "adaptive" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

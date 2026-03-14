@@ -3,25 +3,25 @@ package com.example.mapa.data.local
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.example.mapa.data.local.dao.ChatDao
-import com.example.mapa.data.local.dao.LocalDao
-import com.example.mapa.data.local.dao.UsuarioDao
+import com.example.mapa.data.local.dao.LocationDao
+import com.example.mapa.data.local.dao.UserDao
 import com.example.mapa.data.local.entity.ChatEntity
-import com.example.mapa.data.local.entity.LocalEntity
-import com.example.mapa.data.local.entity.MensagemEntity
-import com.example.mapa.data.local.entity.UsuarioEntity
+import com.example.mapa.data.local.entity.LocationEntity
+import com.example.mapa.data.local.entity.MsgEntity
+import com.example.mapa.data.local.entity.UserEntity
 
 @Database(
     entities = [
-        UsuarioEntity::class,
-        LocalEntity::class,
+        UserEntity::class,
+        LocationEntity::class,
         ChatEntity::class,
-        MensagemEntity::class
+        MsgEntity::class
     ],
-    version = 1,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
-    abstract fun usuarioDao(): UsuarioDao
-    abstract fun localDao(): LocalDao
+    abstract fun userDao(): UserDao
+    abstract fun locationDao(): LocationDao
     abstract fun chatDao(): ChatDao
 }

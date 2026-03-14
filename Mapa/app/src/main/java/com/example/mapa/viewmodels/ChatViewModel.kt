@@ -4,11 +4,11 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mapa.data.remote.dto.ChatDTO
-import com.example.mapa.data.remote.dto.MensagemDTO
-import com.example.mapa.data.remote.dto.UsuarioDTO
+import com.example.mapa.data.remote.dto.MsgDTO
+import com.example.mapa.data.remote.dto.UserDTO
 import com.example.mapa.data.remote.datasource.AuthRemote
 import com.example.mapa.data.repository.ChatRepository
-import com.example.mapa.data.repository.UsuarioRepository
+import com.example.mapa.data.repository.UserRepository
 import com.example.mapa.model.ChatUiState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
@@ -32,94 +32,99 @@ import java.util.UUID
  *
  * @property authRemote Repositório para operações de autenticação.
  * @property chatRepo Repositório para operações relacionadas a chats.
- * @property usuarioRepo Repositório para operações relacionadas a usuários.
+ * @property userRepo Repositório para operações relacionadas a usuários.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ChatViewModel(
     authRemote: AuthRemote,
     private val chatRepo: ChatRepository,
-    private val usuarioRepo: UsuarioRepository,
+    private val userRepo: UserRepository,
 ) : ViewModel() {
     /**
      * O UID do destinatário (usuário selecionado na lista de chats).
      */
-    private val _contatoUid = MutableStateFlow<String?>(null)
+    private val _contactUid = MutableStateFlow<String?>(null)
 
     /**
      * O ID do local selecionado na lista de chats.
      */
-    private val _localId = MutableStateFlow<String?>(null)
+    private val _locationId = MutableStateFlow<String?>(null)
 
     /**
      * O estado de carregamento da tela.
      */
-    private val _carregando = MutableStateFlow(false)
+    private val _loading = MutableStateFlow(false)
 
     /**
      * Canal para enviar mensagens de eventos para a UI.
      */
-    private val _canal = Channel<String>(Channel.BUFFERED)
-    val canal = _canal.receiveAsFlow()
+    private val _channel = Channel<String>(Channel.BUFFERED)
+    val channel = _channel.receiveAsFlow()
 
     /**
      * O UID do autor (usuário logado).
      */
-    val autorUid: StateFlow<String?> = authRemote.usuario
+    val authorUid: StateFlow<String?> = authRemote.user
         .map { it?.uid }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     /**
      * Combinação de dados entre o autor e o contato para carregar as mensagens.
      */
-    private val dadosChatFlow = combine(
-        autorUid.filterNotNull(),
-        _contatoUid.filterNotNull()
-    ) { meuUid, contatoUid -> Pair(meuUid, contatoUid) }
-        .flatMapLatest { (meuUid, contatoUid) ->
-            val salaId = gerarSalaId(meuUid, contatoUid)
+    private val chatFlow = combine(
+        authorUid.filterNotNull(),
+        _contactUid.filterNotNull()
+    ) { myUid, contactUid -> Pair(myUid, contactUid) }
+        .flatMapLatest { (myUid, contactUid) ->
             combine(
-                carregarMsgsFlow(salaId),
-                carregarContatoFlow(contatoUid),
-            ) { msgs, contato -> Triple(msgs, contato, meuUid) }
+                loadMsgsFlow(generateId(myUid, contactUid)),
+                loadContactFlow(contactUid),
+            ) { msgs, contact -> Triple(msgs, contact, myUid) }
         }
 
     /**
      * O estado da UI para a tela de chat.
      */
     val uiState: StateFlow<ChatUiState> = combine(
-        dadosChatFlow,
-        _carregando
-    ) { (msgs, contato, autorUid), carregando ->
+        chatFlow,
+        _loading
+    ) { (msgs, contact, authorUid), loading ->
         ChatUiState(
             msgs = msgs,
-            contato = contato,
-            autorUid = autorUid,
-            carregando = carregando,
-            carregandoFoto = contato?.foto == null
+            contact = contact,
+            uid = authorUid,
+            loading = loading,
+            loadingPhoto = contact?.photo == null
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = ChatUiState(carregando = true, carregandoFoto = true)
+        initialValue = ChatUiState(loading = true, loadingPhoto = true)
     )
 
-    fun inicializar(uid: String, localId: String) {
-        if (_contatoUid.value != uid) _contatoUid.value = uid
-        if (_localId.value != localId) _localId.value = localId
+    /**
+     * Inicializa o ViewModel com o UID do autor e do contato.
+     *
+     * @param uid O UID do autor.
+     * @param locationId O ID do local selecionado.
+     */
+    fun initialize(uid: String, locationId: String) {
+        if (_contactUid.value != uid) _contactUid.value = uid
+        if (_locationId.value != locationId) _locationId.value = locationId
     }
 
     /**
      * Carrega as mensagens do chat.
      *
-     * @param salaId O ID da sala de chat.
+     * @param id O ID da sala de chat.
      * @return Um fluxo de mensagens do chat.
      */
-    private fun carregarMsgsFlow(salaId: String): Flow<List<MensagemDTO>> {
-        return chatRepo.getMsgsBySalaId(salaId)
-            .onEach { msgs -> marcarMsgsComoLidas(salaId, msgs) }
+    private fun loadMsgsFlow(id: String): Flow<List<MsgDTO>> {
+        return chatRepo.getMsgs(id)
+            .onEach { msgs -> markMsgsAsRead(id, msgs) }
             .catch { e ->
                 Log.e("ChatViewModel", "carregarMsgsFlow: ${e.message}")
-                _canal.send("Erro ao carregar mensagens: ${e.message}")
+                _channel.send("Erro ao carregar mensagens: ${e.message}")
                 emit(emptyList())
             }
     }
@@ -130,8 +135,8 @@ class ChatViewModel(
      * @param uid O UID do contato.
      * @return Um [Flow] de informações do contato.
      */
-    private fun carregarContatoFlow(uid: String): Flow<UsuarioDTO?> {
-        return usuarioRepo.getUsuario(uid)
+    private fun loadContactFlow(uid: String): Flow<UserDTO?> {
+        return userRepo.getUser(uid)
             .catch {
                 Log.e("ChatViewModel", "carregarContatoFlow: ${it.message}")
                 emit(null)
@@ -143,60 +148,59 @@ class ChatViewModel(
      *
      * @param msg A mensagem a ser enviada.
      */
-    fun enviarMsg(msg: MensagemDTO) {
-        if (msg.texto.isBlank() && msg.imgUrls.isEmpty()) return
+    fun sendMsg(msg: MsgDTO) {
+        if (msg.text.isBlank() && msg.imgUrls.isEmpty()) return
 
-        val autorUid = this@ChatViewModel.autorUid.value ?: return
-        val contato = _contatoUid.value ?: return
-        val salaId = gerarSalaId(autorUid, contato)
-        val localId = _localId.value ?: return
+        val authorUid = this@ChatViewModel.authorUid.value ?: return
+        val contact = _contactUid.value ?: return
+        val id = generateId(authorUid, contact)
+        val locationId = _locationId.value ?: return
 
-        val novaMsg = msg.copy(
+        val newMsg = msg.copy(
             id = UUID.randomUUID().toString(),
-            autorUid = autorUid,
+            uid = authorUid,
             timestamp = System.currentTimeMillis(),
-            lido = false
+            read = false
         )
 
-        val chatResumo = ChatDTO(
-            salaId = salaId,
-            ultimaMsg = novaMsg,
-            ultimoTimestamp = novaMsg.timestamp,
-            participantes = listOf(autorUid, contato),
-            visivelPara = listOf(autorUid, contato),
-            localId = localId
+        val chatSummary = ChatDTO(
+            id = id,
+            lastMsg = newMsg,
+            lastTimestamp = newMsg.timestamp,
+            participants = listOf(authorUid, contact),
+            visibleTo = listOf(authorUid, contact),
+            locationId = locationId
         )
 
         viewModelScope.launch {
-            _carregando.value = true
-            chatRepo.insertMsg(novaMsg, chatResumo)
+            _loading.value = true
+            chatRepo.insertMsg(newMsg, chatSummary)
                 .onFailure { e ->
                     Log.e("ChatViewModel", "enviarMsg: ${e.message}")
-                    _canal.send("Falha ao enviar: ${e.message}")
+                    _channel.send("Falha ao enviar: ${e.message}")
                 }
-            _carregando.value = false
+            _loading.value = false
         }
     }
 
     /**
      * Edita uma mensagem existente.
      *
-     * @param msgId O ID da mensagem a ser editada.
      * @param novaMsg A nova mensagem.
      */
-    fun editarMsg(novaMsg: MensagemDTO) {
-        val meuUid = autorUid.value ?: return
-        val contatoUid = _contatoUid.value ?: return
-        val salaId = gerarSalaId(meuUid, contatoUid)
+    fun updateMsg(novaMsg: MsgDTO) {
+        val myUid = authorUid.value ?: return
+        val contactUid = _contactUid.value ?: return
+        val id = generateId(myUid, contactUid)
 
         viewModelScope.launch {
-            _carregando.value = true
-            chatRepo.updateMsg(salaId, novaMsg)
+            _loading.value = true
+            chatRepo.updateMsg(id, novaMsg)
                 .onFailure { e ->
                     Log.e("ChatViewModel", "editarMsg: ${e.message}")
-                    _canal.send("Falha ao atualizar: ${e.message}")
+                    _channel.send("Falha ao atualizar: ${e.message}")
                 }
-            _carregando.value = false
+            _loading.value = false
         }
     }
 
@@ -205,38 +209,38 @@ class ChatViewModel(
      *
      * @param msgId O ID da mensagem a ser excluída.
      */
-    fun excluirMsg(msgId: String) {
-        val meuUid = autorUid.value ?: return
-        val contatoUid = _contatoUid.value ?: return
-        val salaId = gerarSalaId(meuUid, contatoUid)
+    fun deleteMsg(msgId: String) {
+        val myUid = authorUid.value ?: return
+        val contactUid = _contactUid.value ?: return
+        val id = generateId(myUid, contactUid)
 
         viewModelScope.launch {
-            _carregando.value = true
-            chatRepo.deleteMsg(salaId, msgId)
+            _loading.value = true
+            chatRepo.deleteMsg(id, msgId)
                 .onFailure { e ->
                     Log.e("ChatViewModel", "excluirMsg: ${e.message}")
-                    _canal.send("Falha ao excluir: ${e.message}")
+                    _channel.send("Falha ao excluir: ${e.message}")
                 }
-            _carregando.value = false
+            _loading.value = false
         }
     }
 
     /**
      * Marca as mensagens como lidas.
      *
-     * @param salaId O ID da sala de chat.
+     * @param id O ID da sala de chat.
      * @param msgs As mensagens a serem marcadas como lidas.
      */
-    private fun marcarMsgsComoLidas(salaId: String, msgs: List<MensagemDTO>) {
-        val contatoUid = _contatoUid.value ?: return
-        val atualizar = msgs.any { it.autorUid == contatoUid && !it.lido }
+    private fun markMsgsAsRead(id: String, msgs: List<MsgDTO>) {
+        val contactUid = _contactUid.value ?: return
+        val update = msgs.any { it.uid == contactUid && !it.read }
 
-        if (atualizar) {
+        if (update) {
             viewModelScope.launch {
-                chatRepo.updateMsgsLidas(salaId, contatoUid, true)
+                chatRepo.updateMsgsRead(id, contactUid, true)
                     .onFailure { e ->
                         Log.e("ChatViewModel", "marcarMsgsComoLidas: ${e.message}")
-                        _canal.send("Falha ao marcar como lida: ${e.message}")
+                        _channel.send("Falha ao marcar como lida: ${e.message}")
                     }
             }
         }
@@ -247,15 +251,15 @@ class ChatViewModel(
      *
      * @param nota A nota do usuário.
      */
-    fun avaliarUsuario(nota: Double) {
-        val meuUid = autorUid.value ?: return
-        val contato = uiState.value.contato ?: return
+    fun rateUser(nota: Double) {
+        val myUid = authorUid.value ?: return
+        val contact = uiState.value.contact ?: return
 
         viewModelScope.launch {
-            usuarioRepo.updateUsuarioNota(contato, meuUid, nota)
+            userRepo.updateUserRating(contact, myUid, nota)
                 .onFailure { e ->
                     Log.e("ChatViewModel", "avaliarUsuario: ${e.message}")
-                    _canal.send("Falha ao avaliar: ${e.message}")
+                    _channel.send("Falha ao avaliar: ${e.message}")
                 }
         }
     }
@@ -263,11 +267,11 @@ class ChatViewModel(
     /**
      * Gera um ID de sala com base nos UIDs dos participantes.
      *
-     * @param usuario1 O UID do primeiro participante.
-     * @param usuario2 O UID do segundo participante.
+     * @param user1 O UID do primeiro participante.
+     * @param user2 O UID do segundo participante.
      * @return O ID da sala gerado.
      */
-    private fun gerarSalaId(usuario1: String, usuario2: String): String {
-        return if (usuario1 < usuario2) "${usuario1}_${usuario2}" else "${usuario2}_${usuario1}"
+    private fun generateId(user1: String, user2: String): String {
+        return if (user1 < user2) "${user1}_${user2}" else "${user2}_${user1}"
     }
 }

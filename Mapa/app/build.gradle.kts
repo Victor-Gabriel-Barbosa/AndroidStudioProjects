@@ -52,6 +52,7 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.runtime)
     implementation(libs.firebase.messaging)
+    implementation(libs.androidx.compose.adaptive)
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.navigation3.runtime)

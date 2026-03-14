@@ -10,11 +10,11 @@ import java.io.File
  *
  * @return Um [Uri] para o arquivo de foto a ser criado.
  */
-fun Context.criarUriParaFoto(): Uri {
-    val arquivo = File(this.cacheDir, "foto_${System.currentTimeMillis()}.jpg")
+fun Context.createPhotoUri(): Uri {
+    val file = File(this.cacheDir, "photo_${System.currentTimeMillis()}.jpg")
     return FileProvider.getUriForFile(
         this,
         "${this.packageName}.provider",
-        arquivo
+        file
     )
 }
